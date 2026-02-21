@@ -78,7 +78,7 @@ func updateHandler(storage MemStorage, res http.ResponseWriter, req *http.Reques
 		// Проверка на корректность значения
 		value, err := strconv.ParseFloat(metricValue, 64)
 		if err != nil {
-			http.Error(res, "Invalid gaugq value", http.StatusBadRequest)
+			http.Error(res, "Invalid gauge value", http.StatusBadRequest)
 			return
 		}
 		// Обновление метрики
