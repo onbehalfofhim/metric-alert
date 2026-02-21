@@ -60,7 +60,7 @@ func updateHandler(storage MemStorage, res http.ResponseWriter, req *http.Reques
 	queryParts := strings.Split(path, "/")
 
 	if len(queryParts) != 3 {
-		http.Error(res, "Invalid URL format", http.StatusBadRequest)
+		http.Error(res, "Invalid URL format", http.StatusNotFound)
 		return
 	}
 	// Проверка на заполненность имени метрики
