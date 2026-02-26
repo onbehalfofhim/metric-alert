@@ -70,9 +70,9 @@ func TestMetric_NewCounter(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			metric := models.NewCounter(test.value.name, test.value.value)
-			metricJson, err := json.Marshal(metric)
+			metricJSON, err := json.Marshal(metric)
 			if assert.NoError(t, err) {
-				assert.JSONEq(t, test.want, string(metricJson))
+				assert.JSONEq(t, test.want, string(metricJSON))
 			}
 		})
 	}
