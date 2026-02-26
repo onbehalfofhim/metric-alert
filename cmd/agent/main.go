@@ -16,8 +16,8 @@ func main() {
 	client := agent.NewSender("http://localhost:8080")
 
 	// временные задержки для сборка метрик и отправки запроса
-	var pollInterval int = 2
-	var reportInterval int = 10
+	var pollInterval = 2
+	var reportInterval = 10
 
 	// горутина для сборка метрик
 	go func() {

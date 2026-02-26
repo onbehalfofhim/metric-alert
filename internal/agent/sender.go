@@ -37,6 +37,7 @@ func (s *Sender) Send(metrics []models.Metric) error {
 		if resp.StatusCode == http.StatusNotFound {
 			return fmt.Errorf("bad request: %d", resp.StatusCode)
 		}
+		resp.Body.Close()
 
 		// fmt.Println(resp.Status)
 	}
