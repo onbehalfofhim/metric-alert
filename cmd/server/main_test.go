@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/onbehalfofhim/metric-alert/internal/handler"
 	"github.com/onbehalfofhim/metric-alert/internal/models"
@@ -119,6 +120,8 @@ func Test_RootHandler(t *testing.T) {
 			handler.RootHandler(*s, w, request)
 
 			result := w.Result()
+			err := result.Body.Close()
+			require.NoError(t, err)
 
 			assert.Equal(t, tt.want.statusCode, result.StatusCode)
 		})

@@ -2,6 +2,8 @@ package main
 
 import (
 	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -121,66 +123,92 @@ func TestCollector_GetMetrics(t *testing.T) {
 }
 
 func TestSender_Send(t *testing.T) {
-	value := float64(45)
-	delta := int64(67)
-
 	tests := []struct {
-		name    string
-		url     string
-		metrics []models.Metric
-		wantErr bool
+		name         string
+		metric       models.Metric
+		statusCode   int
+		expectError  bool
+		expectedPath string
 	}{
 		{
-			name: "send gauge metric",
-			url:  "http://localhost:8080",
-			metrics: []models.Metric{
-				{
+			name: "gauge success",
+			metric: func() models.Metric {
+				v := 123.45
+				return models.Metric{
 					ID:    "Metric1",
 					MType: "gauge",
-					Value: &value,
-				},
-			},
-			wantErr: false,
+					Value: &v,
+				}
+			}(),
+			statusCode:   http.StatusOK,
+			expectError:  false,
+			expectedPath: "/update/gauge/Metric1/123.45",
 		},
 		{
-			name: "send counter metric",
-			url:  "http://localhost:8080",
-			metrics: []models.Metric{
-				{
-					ID:    "Metric1",
+			name: "counter success",
+			metric: func() models.Metric {
+				d := int64(10)
+				return models.Metric{
+					ID:    "metric",
 					MType: "counter",
-					Delta: &delta,
-				},
-			},
-			wantErr: false,
+					Delta: &d,
+				}
+			}(),
+			statusCode:   http.StatusOK,
+			expectError:  false,
+			expectedPath: "/update/counter/metric/10",
 		},
 		{
-			name: "send empty value",
-			url:  "http://localhost:8080",
-			metrics: []models.Metric{
-				{
-					ID:    "Metric1",
+			name: "404 error",
+			metric: func() models.Metric {
+				v := 1.0
+				return models.Metric{
+					ID:    "metric",
 					MType: "gauge",
-					Value: nil,
-				},
+					Value: &v,
+				}
+			}(),
+			statusCode:   http.StatusNotFound,
+			expectError:  true,
+			expectedPath: "/update/gauge/metric/1",
+		},
+		{
+			name: "nil value gauge",
+			metric: models.Metric{
+				ID:    "metric",
+				MType: "gauge",
+				Value: nil,
 			},
-			wantErr: true,
+			statusCode:   http.StatusOK,
+			expectError:  false, // запрос уйдёт на base URL
+			expectedPath: "/",
 		},
 	}
+
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			s := agent.NewSender(test.url)
-			gotErr := s.Send(test.metrics)
 
-			if gotErr != nil {
-				if !test.wantErr {
-					t.Errorf("Send() failed: %v", gotErr)
-				}
-				return
+			var receivedPath string
+
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				receivedPath = r.URL.Path
+				w.WriteHeader(test.statusCode)
+			}))
+			defer server.Close()
+
+			s := agent.NewSender(server.URL)
+
+			err := s.Send([]models.Metric{test.metric})
+
+			if test.expectError && err == nil {
+				assert.Error(t, err)
 			}
-			if test.wantErr {
-				t.Fatal("Send() succeeded unexpectedly")
+
+			if !test.expectError {
+				assert.NoError(t, err)
 			}
+
+			assert.Equal(t, test.expectedPath, receivedPath)
 		})
 	}
 }
