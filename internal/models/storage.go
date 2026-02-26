@@ -13,9 +13,11 @@ type MemStorage struct {
 }
 
 // Конструктор для структуры хранилищая метрик
-func (s *MemStorage) NewMemStorage() {
-	s.gauges = make(map[string]float64, 0)
-	s.counters = make(map[string]int64, 0)
+func NewMemStorage() *MemStorage {
+	return &MemStorage{
+		gauges:   make(map[string]float64, 0),
+		counters: make(map[string]int64, 0),
+	}
 }
 
 // Метод обновления метрики с типом gauge

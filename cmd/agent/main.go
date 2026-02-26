@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"time"
 
 	"github.com/onbehalfofhim/metric-alert/internal/agent"
@@ -9,12 +10,10 @@ import (
 
 func main() {
 	// создание сборщика метрик
-	collector := models.Collector{}
-	collector.NewCollector()
+	collector := models.NewCollector()
 
 	// создание клиента для отправки метрик
-	client := agent.Sender{}
-	client.NewSender("http://localhost:8080")
+	client := agent.NewSender("http://localhost:8080")
 
 	// временные задержки для сборка метрик и отправки запроса
 	var pollInterval int = 2
@@ -34,7 +33,10 @@ func main() {
 			time.Sleep(time.Duration(reportInterval) * time.Second)
 
 			metrics := collector.GetMetrics()
-			client.Send(metrics)
+			err := client.Send(metrics)
+			if err != nil {
+				log.Println("send failed:", err)
+			}
 		}
 	}()
 	// for _, v := range metrics {

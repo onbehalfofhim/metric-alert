@@ -10,12 +10,11 @@ import (
 )
 
 func main() {
-	storage := models.MemStorage{}
-	storage.NewMemStorage()
+	storage := models.NewMemStorage()
 
 	log.Fatal(http.ListenAndServe(":8080", http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
-			handler.RootHandler(storage, w, r)
+			handler.RootHandler(*storage, w, r)
 		},
 	)))
 }

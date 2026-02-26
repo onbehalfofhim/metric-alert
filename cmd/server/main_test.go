@@ -42,8 +42,7 @@ func TestMemStorage_UpdateGauge(t *testing.T) {
 			want:  -8.5,
 		},
 	}
-	s := models.MemStorage{}
-	s.NewMemStorage()
+	s := models.NewMemStorage()
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			s.UpdateGauge(test.value.metric, test.value.value)
@@ -80,8 +79,7 @@ func TestMemStorage_UpdateCounter(t *testing.T) {
 		},
 	}
 
-	s := models.MemStorage{}
-	s.NewMemStorage()
+	s := models.NewMemStorage()
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -112,14 +110,13 @@ func Test_RootHandler(t *testing.T) {
 		{name: "correct query #2", request: "/update/counter/metric1/6", want: want{statusCode: 200}},
 	}
 
-	s := models.MemStorage{}
-	s.NewMemStorage()
+	s := models.NewMemStorage()
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			request := httptest.NewRequest(http.MethodPost, tt.request, nil)
 			w := httptest.NewRecorder()
-			handler.RootHandler(s, w, request)
+			handler.RootHandler(*s, w, request)
 
 			result := w.Result()
 

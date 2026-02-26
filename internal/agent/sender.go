@@ -2,7 +2,6 @@ package agent
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 
 	"github.com/onbehalfofhim/metric-alert/internal/models"
@@ -13,12 +12,14 @@ type Sender struct {
 	URL    string
 }
 
-func (s *Sender) NewSender(url string) {
-	s.URL = url
-	s.Client = &http.Client{}
+func NewSender(url string) *Sender {
+	return &Sender{
+		URL:    url,
+		Client: &http.Client{},
+	}
 }
 
-func (s *Sender) Send(metrics []models.Metric) {
+func (s *Sender) Send(metrics []models.Metric) error {
 	for _, v := range metrics {
 		uri := fmt.Sprintf("%s/", s.URL)
 		if v.MType == "gauge" && v.Value != nil {
@@ -27,13 +28,17 @@ func (s *Sender) Send(metrics []models.Metric) {
 		if v.MType == "counter" && v.Delta != nil {
 			uri = fmt.Sprintf("%s/update/%s/%s/%v", s.URL, v.MType, v.ID, *v.Delta)
 		}
-		fmt.Println(uri)
+		// fmt.Println(uri)
 
 		resp, err := s.Client.Post(uri, "text/plain", nil)
 		if err != nil {
-			log.Fatal(err)
+			return err
+		}
+		if resp.StatusCode == http.StatusNotFound {
+			return fmt.Errorf("bad request: %d", resp.StatusCode)
 		}
 
-		fmt.Println(resp.Status)
+		// fmt.Println(resp.Status)
 	}
+	return nil
 }

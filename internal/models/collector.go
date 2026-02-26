@@ -14,9 +14,11 @@ type Collector struct {
 }
 
 // констурктор для сборщика метрик
-func (c *Collector) NewCollector() {
-	c.pollCount = 0
-	c.metrics = make(map[string]Metric, 0)
+func NewCollector() *Collector {
+	return &Collector{
+		pollCount: 0,
+		metrics:   make(map[string]Metric, 0),
+	}
 }
 
 // метод выдачи метрик из сборщика
