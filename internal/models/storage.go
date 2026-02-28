@@ -37,7 +37,7 @@ func (s *MemStorage) GetGauge(name string) (float64, bool) {
 	var value float64
 	var ok bool
 
-	for k, _ := range s.gauges {
+	for k := range s.gauges {
 		gName := strings.ToLower(k)
 		if gName == name {
 			value, ok = s.gauges[k]
@@ -51,7 +51,7 @@ func (s *MemStorage) GetCounter(name string) (int64, bool) {
 	var value int64
 	var ok bool
 
-	for k, _ := range s.counters {
+	for k := range s.counters {
 		cName := strings.ToLower(k)
 		if cName == name {
 			value, ok = s.counters[k]
