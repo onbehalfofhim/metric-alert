@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"strings"
 	"time"
 
 	"github.com/onbehalfofhim/metric-alert/internal/agent"
@@ -9,15 +10,17 @@ import (
 )
 
 func main() {
+	parseFlags()
+
 	// создание сборщика метрик
 	collector := models.NewCollector()
 
 	// создание клиента для отправки метрик
-	client := agent.NewSender("http://localhost:8080")
+	if !strings.HasPrefix(flagRunAddr, "http://") {
+		flagRunAddr = "http://" + flagRunAddr
+	}
 
-	// временные задержки для сборка метрик и отправки запроса
-	var pollInterval = 2
-	var reportInterval = 10
+	client := agent.NewSender(flagRunAddr)
 
 	// горутина для сборка метрик
 	go func() {

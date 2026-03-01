@@ -2,7 +2,6 @@ package main
 
 import (
 	// "fmt"
-	"log"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -26,7 +25,16 @@ func Route(storage *models.MemStorage) http.Handler {
 }
 
 func main() {
+	parseFlags()
+
+	if err := run(); err != nil {
+		panic(err)
+	}
+}
+
+func run() error {
+	// fmt.Printf("Running server on %s\n", flagRunAddr)
 	storage := models.NewMemStorage()
 
-	log.Fatal(http.ListenAndServe(":8080", Route(storage)))
+	return http.ListenAndServe(flagRunAddr, Route(storage))
 }
