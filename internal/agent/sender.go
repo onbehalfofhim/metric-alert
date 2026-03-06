@@ -34,7 +34,7 @@ func (s *Sender) Send(metrics []models.Metric) error {
 
 		resp, err := s.Client.Post(uri, "text/plain", nil)
 		if err != nil {
-			return fmt.Errorf("Cannot send a POST-request: %w", err)
+			return fmt.Errorf("cannot send a post-request: %w", err)
 		}
 		if resp.StatusCode == http.StatusNotFound {
 			return fmt.Errorf("bad request: %d", resp.StatusCode)
