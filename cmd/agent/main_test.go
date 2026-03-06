@@ -84,7 +84,7 @@ func TestCollector_CollectMetrics(t *testing.T) {
 	c.CollectMetrics()
 	c.CollectMetrics()
 
-	metrics := c.GetMetrics()
+	metrics, _ := c.PrepareMetrics()
 
 	if assert.NotEmpty(t, metrics) {
 		for _, m := range metrics {
@@ -97,12 +97,12 @@ func TestCollector_CollectMetrics(t *testing.T) {
 	}
 }
 
-func TestCollector_GetMetrics(t *testing.T) {
+func TestCollector_PrepareMetrics(t *testing.T) {
 	c := models.NewCollector()
 
 	c.CollectMetrics()
 
-	metrics := c.GetMetrics()
+	metrics, _ := c.PrepareMetrics()
 	checkValue := 9999
 
 	if assert.NotEmpty(t, metrics) {
@@ -113,10 +113,10 @@ func TestCollector_GetMetrics(t *testing.T) {
 		}
 	}
 
-	newMetrics := c.GetMetrics()
+	newMetrics, _ := c.PrepareMetrics()
 	for _, m := range newMetrics {
 		if m.ID == "PollCount" && m.Delta != nil {
-			assert.Equal(t, int64(checkValue), *m.Delta)
+			assert.NotEqual(t, int64(checkValue), *m.Delta)
 		}
 	}
 

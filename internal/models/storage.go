@@ -1,6 +1,9 @@
 package models
 
-import "strings"
+import (
+	"strings"
+	"sync"
+)
 
 // Интерфейс для взаимодействия с хранилищем метрик
 type Storage interface {
@@ -10,6 +13,7 @@ type Storage interface {
 
 // Структура для хранения метрик
 type MemStorage struct {
+	mu       sync.RWMutex // для разделения потоков при работе с хранилищем метрик
 	gauges   map[string]float64
 	counters map[string]int64
 }
@@ -24,16 +28,25 @@ func NewMemStorage() *MemStorage {
 
 // Метод обновления метрики с типом gauge
 func (s *MemStorage) UpdateGauge(name string, value float64) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	s.gauges[name] = value
 }
 
 // Метод обновления метрики с типом counter
 func (s *MemStorage) UpdateCounter(name string, value int64) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	s.counters[name] += value
 }
 
 // Метод получения метрики с типом gauge
 func (s *MemStorage) GetGauge(name string) (float64, bool) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
 	var value float64
 	var ok bool
 
@@ -48,6 +61,9 @@ func (s *MemStorage) GetGauge(name string) (float64, bool) {
 
 // Метод получения метрики с типом counter
 func (s *MemStorage) GetCounter(name string) (int64, bool) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
 	var value int64
 	var ok bool
 
@@ -61,6 +77,9 @@ func (s *MemStorage) GetCounter(name string) (int64, bool) {
 }
 
 func (s *MemStorage) GetListGauge() map[string]float64 {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
 	result := make(map[string]float64, len(s.gauges))
 
 	for k, v := range s.gauges {
@@ -71,6 +90,9 @@ func (s *MemStorage) GetListGauge() map[string]float64 {
 }
 
 func (s *MemStorage) GetListCounter() map[string]int64 {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
 	result := make(map[string]int64, len(s.counters))
 
 	for k, v := range s.counters {

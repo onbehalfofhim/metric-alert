@@ -3,6 +3,7 @@ package agent
 import (
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/onbehalfofhim/metric-alert/internal/models"
 )
@@ -23,23 +24,23 @@ func (s *Sender) Send(metrics []models.Metric) error {
 	for _, v := range metrics {
 		uri := fmt.Sprintf("%s/", s.URL)
 		if v.MType == "gauge" && v.Value != nil {
-			uri = fmt.Sprintf("%s/update/%s/%s/%v", s.URL, v.MType, v.ID, *v.Value)
+			value := strconv.FormatFloat(*v.Value, 'f', -1, 64)
+			uri = fmt.Sprintf("%s/update/%s/%s/%v", s.URL, v.MType, v.ID, value)
 		}
 		if v.MType == "counter" && v.Delta != nil {
-			uri = fmt.Sprintf("%s/update/%s/%s/%v", s.URL, v.MType, v.ID, *v.Delta)
+			value := strconv.FormatInt(*v.Delta, 10)
+			uri = fmt.Sprintf("%s/update/%s/%s/%v", s.URL, v.MType, v.ID, value)
 		}
-		// fmt.Println(uri)
 
 		resp, err := s.Client.Post(uri, "text/plain", nil)
 		if err != nil {
-			return err
+			return fmt.Errorf("Cannot send a POST-request: %w", err)
 		}
 		if resp.StatusCode == http.StatusNotFound {
 			return fmt.Errorf("bad request: %d", resp.StatusCode)
 		}
 		resp.Body.Close()
-
-		// fmt.Println(resp.Status)
 	}
+
 	return nil
 }

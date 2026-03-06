@@ -1,51 +1,41 @@
 package main
 
 import (
-	"log"
-	"strings"
+	"fmt"
 	"time"
 
 	"github.com/onbehalfofhim/metric-alert/internal/agent"
+	"github.com/onbehalfofhim/metric-alert/internal/config"
 	"github.com/onbehalfofhim/metric-alert/internal/models"
 )
 
 func main() {
-	parseFlags()
+	cfg := config.ParseAgentFlags()
 
 	// создание сборщика метрик
 	collector := models.NewCollector()
 
 	// создание клиента для отправки метрик
-	if !strings.HasPrefix(flagRunAddr, "http://") {
-		flagRunAddr = "http://" + flagRunAddr
-	}
-
-	client := agent.NewSender(flagRunAddr)
+	client := agent.NewSender(cfg.RunAddr)
 
 	// горутина для сборка метрик
 	go func() {
 		for {
 			collector.CollectMetrics()
-			time.Sleep(time.Duration(pollInterval) * time.Second)
+			time.Sleep(time.Duration(cfg.PollInterval) * time.Second)
 		}
 	}()
 
-	// горутина для отправки
-	go func() {
-		for {
-			time.Sleep(time.Duration(reportInterval) * time.Second)
+	// отправка метрик
+	for {
+		time.Sleep(time.Duration(cfg.ReportInterval) * time.Second)
 
-			metrics := collector.GetMetrics()
-			err := client.Send(metrics)
-			if err != nil {
-				log.Println("send failed:", err)
-			}
+		metrics, delta := collector.PrepareMetrics()
+
+		err := client.Send(metrics)
+		if err != nil {
+			fmt.Printf("Send falied: %s", err)
 		}
-	}()
-	// for _, v := range metrics {
-	// 	fmt.Println(v)
-	// }
-
-	// чтобы main не завершился
-	select {}
+		collector.CommitPollCount(delta)
+	}
 }

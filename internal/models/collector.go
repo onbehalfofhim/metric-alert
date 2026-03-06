@@ -4,6 +4,7 @@ import (
 	"math/rand"
 	"runtime"
 	"sync"
+	"sync/atomic"
 )
 
 // сборщик метрик
@@ -21,18 +22,28 @@ func NewCollector() *Collector {
 	}
 }
 
-// метод выдачи метрик из сборщика
-func (c *Collector) GetMetrics() []Metric {
+// подготовка метрик для отправки на сервер
+func (c *Collector) PrepareMetrics() ([]Metric, int64) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	result := make([]Metric, 0, len(c.metrics))
+	metrics := make([]Metric, 0, len(c.metrics))
 
 	for _, v := range c.metrics {
-		result = append(result, v)
+		metrics = append(metrics, v)
 	}
 
-	return result
+	// добавление дельты в метрики
+	if c.pollCount > 0 {
+		metrics = append(metrics, NewCounter("PollCount", c.pollCount))
+	}
+
+	return metrics, c.pollCount
+}
+
+// корректировка счетчика после успешной отправки
+func (c *Collector) CommitPollCount(delta int64) {
+	atomic.AddInt64(&c.pollCount, -delta)
 }
 
 // метод сбора метрик
@@ -86,7 +97,4 @@ func (c *Collector) CollectMetrics() {
 
 	//== Random Value ==
 	c.metrics["RandomValue"] = NewGauge("RandomValue", rand.Float64())
-
-	//== Poll Counter ==
-	c.metrics["PollCount"] = NewCounter("PollCount", c.pollCount)
 }

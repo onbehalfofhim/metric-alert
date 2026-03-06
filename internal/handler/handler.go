@@ -8,49 +8,59 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/onbehalfofhim/metric-alert/internal/models"
+	"github.com/onbehalfofhim/metric-alert/internal/templates"
 )
+
+func mapToMetricView[T any](m map[string]T, format func(T) string) []templates.MetricView {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+
+	sort.Strings(keys)
+
+	result := make([]templates.MetricView, 0, len(keys))
+	for _, name := range keys {
+		result = append(result, templates.MetricView{
+			Name:  name,
+			Value: format(m[name]),
+		})
+	}
+
+	return result
+}
 
 // Обработчик корневого запроса
 func RootHandler(storage *models.MemStorage) http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
+		//форматируем метрики типа gauge
+		gauges := mapToMetricView(
+			storage.GetListGauge(),
+			func(v float64) string {
+				return strconv.FormatFloat(v, 'f', -1, 64)
+			},
+		)
+
+		//форматируем метрики типа counter
+		counters := mapToMetricView(
+			storage.GetListCounter(),
+			func(v int64) string {
+				return strconv.FormatInt(v, 10)
+			},
+		)
+
+		data := templates.MetricsPageData{
+			Gauges:   gauges,
+			Counters: counters,
+		}
+
 		res.Header().Set("Content-Type", "text/html; charset=utf-8")
 		res.WriteHeader(http.StatusOK)
 
-		res.Write([]byte("<html><head><title>Metrics</title></head><body>"))
-		res.Write([]byte("<h1><span style='font-family:Comic Sans MS,cursive'>Current Metrics</span></h1>"))
-
-		//создаем таблицу текущих метрик
-		res.Write([]byte("<table align='center' border='1' cellpadding='1' cellspacing='1' style='width:500px'>"))
-		res.Write([]byte("<thead><tr><th scope='col'>Name</th><th scope='col'>Value</th></tr></thread>"))
-		res.Write([]byte("<tbody><tr><td colspan='2' style='text-align:center'>gauges</td></tr>"))
-
-		//выводим метрики типа gauge
-		gauges := storage.GetListGauge()
-		gKeys := make([]string, 0, len(gauges))
-		for k := range gauges {
-			gKeys = append(gKeys, k)
+		err := templates.RenderMetricsPage(res, data)
+		if err != nil {
+			http.Error(res, err.Error(), http.StatusInternalServerError)
 		}
-		sort.Strings(gKeys)
-		for _, name := range gKeys {
-			v := gauges[name]
-			res.Write([]byte("<tr><td>" + name + "</td><td>" + strconv.FormatFloat(v, 'f', -1, 64) + "</td></tr>"))
-		}
-
-		res.Write([]byte("<tr><td colspan='2' style='text-align:center'>counters</td></tr>"))
-		//выводим метрики типа gauge
-		counters := storage.GetListCounter()
-		cKeys := make([]string, 0, len(counters))
-		for k := range counters {
-			cKeys = append(cKeys, k)
-		}
-		sort.Strings(cKeys)
-		for _, name := range cKeys {
-			v := counters[name]
-			res.Write([]byte("<tr><td>" + name + "</td><td>" + strconv.FormatInt(v, 10) + "</td></tr>"))
-		}
-
-		res.Write([]byte("</tbody>"))
-		res.Write([]byte("</ul></body></html>"))
 	}
 }
 
@@ -92,7 +102,6 @@ func UpdateHandler(storage *models.MemStorage) http.HandlerFunc {
 		}
 
 		res.WriteHeader(http.StatusOK)
-		// res.Write([]byte("OK"))
 	}
 }
 
