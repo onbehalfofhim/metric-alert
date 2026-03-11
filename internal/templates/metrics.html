@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Metrics</title>
+</head>
+<body>
+
+<h1><span style="font-family:Comic Sans MS,cursive">Current Metrics</span></h1>
+
+<table align="center" border="1" cellpadding="1" cellspacing="1" style="width:500px">
+
+<thead>
+<tr>
+<th>Name</th>
+<th>Value</th>
+</tr>
+</thead>
+
+<tbody>
+
+<tr>
+<td colspan="2" style="text-align:center">gauges</td>
+</tr>
+
+{{range .Gauges}}
+<tr>
+<td>{{.Name}}</td>
+<td>{{.Value}}</td>
+</tr>
+{{end}}
+
+<tr>
+<td colspan="2" style="text-align:center">counters</td>
+</tr>
+
+{{range .Counters}}
+<tr>
+<td>{{.Name}}</td>
+<td>{{.Value}}</td>
+</tr>
+{{end}}
+
+</tbody>
+</table>
+
+</body>
+</html>
