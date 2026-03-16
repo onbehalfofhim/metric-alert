@@ -6,7 +6,8 @@ import (
 
 	"github.com/onbehalfofhim/metric-alert/internal/config"
 	"github.com/onbehalfofhim/metric-alert/internal/handler"
-	"github.com/onbehalfofhim/metric-alert/internal/models"
+	"github.com/onbehalfofhim/metric-alert/internal/repository"
+	"github.com/onbehalfofhim/metric-alert/internal/service"
 )
 
 func main() {
@@ -18,7 +19,9 @@ func main() {
 }
 
 func run(cfg config.ServerConfig) error {
-	storage := models.NewMemStorage()
+	storage := repository.NewMemStorage()
+	service := service.NewMetricService(storage)
+	handler := handler.New(service)
 
-	return http.ListenAndServe(cfg.RunAddr, handler.Route(storage))
+	return http.ListenAndServe(cfg.RunAddr, handler.Route())
 }

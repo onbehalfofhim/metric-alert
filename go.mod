@@ -3,6 +3,7 @@ module github.com/onbehalfofhim/metric-alert
 go 1.24.13
 
 require (
+	github.com/caarlos0/env/v6 v6.10.1 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/go-chi/chi/v5 v5.2.5 // indirect
 	github.com/go-resty/resty/v2 v2.17.2 // indirect

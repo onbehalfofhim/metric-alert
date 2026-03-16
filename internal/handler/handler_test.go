@@ -1,4 +1,4 @@
-package main
+package handler
 
 import (
 	"net/http"
@@ -9,99 +9,17 @@ import (
 	"github.com/go-resty/resty/v2"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/onbehalfofhim/metric-alert/internal/handler"
-	"github.com/onbehalfofhim/metric-alert/internal/models"
+	"github.com/onbehalfofhim/metric-alert/internal/repository"
+	"github.com/onbehalfofhim/metric-alert/internal/service"
 )
 
-func TestMemStorage_UpdateGauge(t *testing.T) {
-	type fields struct {
-		metric string
-		value  float64
-	}
-	tests := []struct {
-		name  string
-		value fields
-		want  float64
-	}{
-		{
-			name:  "first update metric",
-			value: fields{metric: "metric1", value: 7.8},
-			want:  7.8,
-		},
-		{
-			name:  "second update metric",
-			value: fields{metric: "metric1", value: 5.7},
-			want:  5.7,
-		},
-		{
-			name:  "zero value",
-			value: fields{metric: "metric2", value: 0},
-			want:  0,
-		},
-		{
-			name:  "negative value",
-			value: fields{metric: "metric3", value: -8.5},
-			want:  -8.5,
-		},
-	}
-	s := models.NewMemStorage()
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			s.UpdateGauge(test.value.metric, test.value.value)
-			v, ok := s.GetGauge(test.value.metric)
-			if ok {
-				assert.Equal(t, test.want, v)
-			}
-		})
-	}
-}
-
-func TestMemStorage_UpdateCounter(t *testing.T) {
-	type fields struct {
-		metric string
-		value  int64
-	}
-	tests := []struct {
-		name  string
-		value fields
-		want  int64
-	}{
-		{
-			name:  "first update metric",
-			value: fields{metric: "metric1", value: 543},
-			want:  543,
-		},
-		{
-			name:  "second update metric",
-			value: fields{metric: "metric1", value: 7},
-			want:  550,
-		},
-		{
-			name:  "negative value",
-			value: fields{metric: "metric1", value: -7},
-			want:  543,
-		},
-	}
-
-	s := models.NewMemStorage()
-
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			s.UpdateCounter(test.value.metric, test.value.value)
-
-			v, ok := s.GetCounter(test.value.metric)
-			if ok {
-				assert.Equal(t, test.want, v)
-			}
-		})
-	}
-}
-
 func Test_RootHandler(t *testing.T) {
-	s := models.NewMemStorage()
+	storage := repository.NewMemStorage()
+	service := service.NewMetricService(storage)
+	h := New(service)
 
 	r := chi.NewRouter()
-	r.Get("/", handler.RootHandler(s))
+	r.Get("/", h.RootHandler())
 
 	// запускаем тестовый сервер, будет выбран первый свободный порт
 	srv := httptest.NewServer(r)
@@ -148,10 +66,12 @@ func Test_UpdateHandler(t *testing.T) {
 		{name: "correct query #2", request: "/update/counter/metric1/6", expectedCode: http.StatusOK},
 	}
 
-	s := models.NewMemStorage()
+	storage := repository.NewMemStorage()
+	service := service.NewMetricService(storage)
+	h := New(service)
 
 	r := chi.NewRouter()
-	r.Post("/update/{type}/{name}/{value}", handler.UpdateHandler(s))
+	r.Post("/update/{type}/{name}/{value}", h.UpdateHandler())
 
 	// запускаем тестовый сервер, будет выбран первый свободный порт
 	srv := httptest.NewServer(r)
@@ -175,13 +95,16 @@ func Test_UpdateHandler(t *testing.T) {
 }
 
 func Test_GetMetricHandler(t *testing.T) {
-	s := models.NewMemStorage()
-	s.UpdateGauge("metric1", 8.7)
-	s.UpdateCounter("metric2", -9)
-	s.UpdateCounter("METric", 3)
+	storage := repository.NewMemStorage()
+	service := service.NewMetricService(storage)
+	h := New(service)
+
+	service.UpdateMetric("gauge", "metric1", "8.7")
+	service.UpdateMetric("counter", "metric2", "-9")
+	service.UpdateMetric("counter", "METric", "3")
 
 	r := chi.NewRouter()
-	r.Get("/value/{type}/{name}", handler.GetMetricHandler(s))
+	r.Get("/value/{type}/{name}", h.GetMetricHandler())
 
 	// запускаем тестовый сервер, будет выбран первый свободный порт
 	srv := httptest.NewServer(r)

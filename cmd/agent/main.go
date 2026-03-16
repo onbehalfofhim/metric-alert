@@ -6,14 +6,13 @@ import (
 
 	"github.com/onbehalfofhim/metric-alert/internal/agent"
 	"github.com/onbehalfofhim/metric-alert/internal/config"
-	"github.com/onbehalfofhim/metric-alert/internal/models"
 )
 
 func main() {
 	cfg := config.ParseAgentFlags()
 
 	// создание сборщика метрик
-	collector := models.NewCollector()
+	collector := agent.NewCollector()
 
 	// создание клиента для отправки метрик
 	client := agent.NewSender(cfg.RunAddr)

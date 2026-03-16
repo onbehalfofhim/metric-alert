@@ -7,9 +7,20 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/onbehalfofhim/metric-alert/internal/models"
+	"github.com/onbehalfofhim/metric-alert/internal/service"
 	"github.com/onbehalfofhim/metric-alert/internal/templates"
+	"github.com/onbehalfofhim/metric-alert/pkg/errors"
 )
+
+type Handler struct {
+	service *service.MetricsService
+}
+
+func New(service *service.MetricsService) *Handler {
+	return &Handler{
+		service: service,
+	}
+}
 
 func mapToMetricView[T any](m map[string]T, format func(T) string) []templates.MetricView {
 	keys := make([]string, 0, len(m))
@@ -31,11 +42,11 @@ func mapToMetricView[T any](m map[string]T, format func(T) string) []templates.M
 }
 
 // Обработчик корневого запроса
-func RootHandler(storage *models.MemStorage) http.HandlerFunc {
+func (h *Handler) RootHandler() http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		//форматируем метрики типа gauge
 		gauges := mapToMetricView(
-			storage.GetListGauge(),
+			h.service.GetListGauges(),
 			func(v float64) string {
 				return strconv.FormatFloat(v, 'f', -1, 64)
 			},
@@ -43,7 +54,7 @@ func RootHandler(storage *models.MemStorage) http.HandlerFunc {
 
 		//форматируем метрики типа counter
 		counters := mapToMetricView(
-			storage.GetListCounter(),
+			h.service.GerListCounters(),
 			func(v int64) string {
 				return strconv.FormatInt(v, 10)
 			},
@@ -65,7 +76,7 @@ func RootHandler(storage *models.MemStorage) http.HandlerFunc {
 }
 
 // Обрабтчик запроса на обнолвение метрик
-func UpdateHandler(storage *models.MemStorage) http.HandlerFunc {
+func (h *Handler) UpdateHandler() http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		// Проверка на заполненность имени метрики
 		metricType := chi.URLParam(req, "type")
@@ -76,28 +87,9 @@ func UpdateHandler(storage *models.MemStorage) http.HandlerFunc {
 			return
 		}
 
-		// Проверка типа метрики
-		switch metricType {
-		case "gauge":
-			// Проверка на корректность значения
-			value, err := strconv.ParseFloat(metricValue, 64)
-			if err != nil {
-				http.Error(res, "Invalid gauge value", http.StatusBadRequest)
-				return
-			}
-			// Обновление метрики
-			storage.UpdateGauge(metricName, value)
-		case "counter":
-			// Проверка на корректность значения
-			value, err := strconv.ParseInt(metricValue, 10, 64)
-			if err != nil {
-				http.Error(res, "Invalid counter value", http.StatusBadRequest)
-				return
-			}
-			// Обновление метрики
-			storage.UpdateCounter(metricName, value)
-		default:
-			http.Error(res, "Bad metric's type", http.StatusBadRequest)
+		err := h.service.UpdateMetric(metricType, metricName, metricValue)
+		if err != nil {
+			http.Error(res, "Invalid type or metric name", http.StatusBadRequest)
 			return
 		}
 
@@ -106,34 +98,29 @@ func UpdateHandler(storage *models.MemStorage) http.HandlerFunc {
 }
 
 // Обработчик запроса на выдачу значения конкретной метрики
-func GetMetricHandler(storage *models.MemStorage) http.HandlerFunc {
+func (h *Handler) GetMetricHandler() http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		metricType := chi.URLParam(req, "type")
 		metricName := strings.ToLower(chi.URLParam(req, "name"))
 
-		switch metricType {
-		case "gauge":
-			// Проверка на корректность значения
-			value, ok := storage.GetGauge(metricName)
-			if !ok {
+		value, err := h.service.GetMetric(metricType, metricName)
+		if err != nil {
+			switch err {
+
+			case errors.ErrMetricNotFound:
 				http.Error(res, "Metric not found", http.StatusNotFound)
-				return
+
+			case errors.ErrInvalidType:
+				http.Error(res, "Bad metric's type", http.StatusBadRequest)
+
+			default:
+				http.Error(res, "Server error", http.StatusInternalServerError)
 			}
-			res.WriteHeader(http.StatusOK)
-			res.Write([]byte(strconv.FormatFloat(value, 'f', -1, 64)))
-		case "counter":
-			// Проверка на корректность значения
-			value, ok := storage.GetCounter(metricName)
-			if !ok {
-				http.Error(res, "Metric not found", http.StatusNotFound)
-				return
-			}
-			res.WriteHeader(http.StatusOK)
-			res.Write([]byte(strconv.FormatInt(value, 10)))
-		default:
-			http.Error(res, "Bad metric's type", http.StatusBadRequest)
+
 			return
 		}
+		res.WriteHeader(http.StatusOK)
+		res.Write([]byte(value))
 
 	}
 }

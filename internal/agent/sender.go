@@ -36,7 +36,7 @@ func (s *Sender) Send(metrics []models.Metric) error {
 		if err != nil {
 			return fmt.Errorf("cannot send a post-request: %w", err)
 		}
-		if resp.StatusCode == http.StatusNotFound {
+		if resp.StatusCode == http.StatusNotFound || resp.StatusCode == http.StatusBadRequest {
 			return fmt.Errorf("bad request: %d", resp.StatusCode)
 		}
 		resp.Body.Close()
