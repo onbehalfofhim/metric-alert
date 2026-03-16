@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"sync/atomic"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -48,4 +49,29 @@ func TestCollector_PrepareMetrics(t *testing.T) {
 		}
 	}
 
+}
+
+func TestCollector_CommitPollCount(t *testing.T) {
+	tests := []struct {
+		name     string
+		initial  int64
+		delta    int64
+		expected int64
+	}{
+		{"simple case", 10, 3, 7},
+		{"zero delta", 5, 0, 5},
+		{"full reset", 8, 8, 0},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := &Collector{
+				pollCount: tt.initial,
+			}
+
+			c.CommitPollCount(tt.delta)
+
+			result := atomic.LoadInt64(&c.pollCount)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
 }

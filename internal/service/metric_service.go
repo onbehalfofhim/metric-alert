@@ -2,6 +2,7 @@ package service
 
 import (
 	"strconv"
+	"strings"
 
 	"github.com/onbehalfofhim/metric-alert/pkg/errors"
 )
@@ -33,6 +34,7 @@ func (s *MetricsService) UpdateMetric(mType, name, value string) error {
 		if err != nil {
 			return errors.ErrInvalidValue
 		}
+		name = strings.ToLower(name)
 		return s.storage.UpdateGauge(name, v)
 
 	case "counter":
@@ -40,6 +42,7 @@ func (s *MetricsService) UpdateMetric(mType, name, value string) error {
 		if err != nil {
 			return errors.ErrInvalidValue
 		}
+		name = strings.ToLower(name)
 		return s.storage.UpdateCounter(name, v)
 	}
 

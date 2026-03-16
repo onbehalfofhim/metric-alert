@@ -93,3 +93,179 @@ func TestMemStorage_UpdateCounter(t *testing.T) {
 		})
 	}
 }
+
+func TestMemStorage_GetGauge(t *testing.T) {
+	tests := []struct {
+		name       string
+		metricName string
+		want       float64
+		wantErr    string
+	}{
+		{"positive", "test", 7.6, ""},
+		{"negative", "test2", 0, "metric not found"},
+	}
+
+	s := NewMemStorage()
+	s.UpdateGauge("test", 7.6)
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, gotErr := s.GetGauge(tt.metricName)
+			if gotErr != nil {
+				assert.EqualError(t, gotErr, tt.wantErr)
+			}
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestMemStorage_GetCounter(t *testing.T) {
+	tests := []struct {
+		name       string
+		metricName string
+		want       int64
+		wantErr    string
+	}{
+		{"positive", "test", 7, ""},
+		{"negative", "test2", 0, "metric not found"},
+	}
+
+	s := NewMemStorage()
+	s.UpdateCounter("test", 7)
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, gotErr := s.GetCounter(tt.metricName)
+			if gotErr != nil {
+				assert.EqualError(t, gotErr, tt.wantErr)
+			}
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestMemStorage_GetListGauges(t *testing.T) {
+	tests := []struct {
+		name     string
+		initial  map[string]float64
+		expected map[string]float64
+	}{
+		{
+			name:     "empty storage",
+			initial:  map[string]float64{},
+			expected: map[string]float64{},
+		},
+		{
+			name: "single metric",
+			initial: map[string]float64{
+				"alloc": 10.5,
+			},
+			expected: map[string]float64{
+				"alloc": 10.5,
+			},
+		},
+		{
+			name: "multiple metrics",
+			initial: map[string]float64{
+				"alloc": 10.5,
+				"heap":  20.3,
+			},
+			expected: map[string]float64{
+				"alloc": 10.5,
+				"heap":  20.3,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := NewMemStorage()
+
+			for k, v := range tt.initial {
+				_ = s.UpdateGauge(k, v)
+			}
+
+			result := s.GetListGauges()
+
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestMemStorage_GetListCounters(t *testing.T) {
+	tests := []struct {
+		name     string
+		initial  map[string]int64
+		expected map[string]int64
+	}{
+		{
+			name:     "empty storage",
+			initial:  map[string]int64{},
+			expected: map[string]int64{},
+		},
+		{
+			name: "single metric",
+			initial: map[string]int64{
+				"test": 10,
+			},
+			expected: map[string]int64{
+				"test": 10,
+			},
+		},
+		{
+			name: "multiple metrics",
+			initial: map[string]int64{
+				"test":  10,
+				"test2": 20,
+			},
+			expected: map[string]int64{
+				"test":  10,
+				"test2": 20,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := NewMemStorage()
+
+			for k, v := range tt.initial {
+				_ = s.UpdateCounter(k, v)
+			}
+
+			result := s.GetListCounters()
+
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestMemStorage_GetListGauges_ReturnsCopy(t *testing.T) {
+	s := NewMemStorage()
+
+	require.NoError(t, s.UpdateGauge("alloc", 10))
+
+	result := s.GetListGauges()
+
+	result["alloc"] = 999
+
+	v, err := s.GetGauge("alloc")
+
+	require.NoError(t, err)
+	assert.Equal(t, float64(10), v)
+}
+
+func TestMemStorage_GetListCounters_ReturnsCopy(t *testing.T) {
+	s := NewMemStorage()
+
+	require.NoError(t, s.UpdateCounter("test", 10))
+
+	result := s.GetListCounters()
+
+	result["test"] = 999
+
+	v, err := s.GetCounter("test")
+
+	require.NoError(t, err)
+	assert.Equal(t, int64(10), v)
+}

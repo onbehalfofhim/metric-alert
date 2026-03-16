@@ -1,7 +1,6 @@
 package repository
 
 import (
-	"strings"
 	"sync"
 
 	"github.com/onbehalfofhim/metric-alert/pkg/errors"
@@ -47,13 +46,12 @@ func (s *MemStorage) GetGauge(name string) (float64, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	for k := range s.gauges {
-		gName := strings.ToLower(k)
-		if gName == name {
-			return s.gauges[k], nil
-		}
+	v, ok := s.gauges[name]
+	if !ok {
+		return 0, errors.ErrMetricNotFound
 	}
-	return 0, errors.ErrMetricNotFound
+
+	return v, nil
 }
 
 // Метод получения метрики с типом counter
@@ -61,13 +59,11 @@ func (s *MemStorage) GetCounter(name string) (int64, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	for k := range s.counters {
-		cName := strings.ToLower(k)
-		if cName == name {
-			return s.counters[k], nil
-		}
+	v, ok := s.counters[name]
+	if !ok {
+		return 0, errors.ErrMetricNotFound
 	}
-	return 0, errors.ErrMetricNotFound
+	return v, nil
 }
 
 func (s *MemStorage) GetListGauges() map[string]float64 {
