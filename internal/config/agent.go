@@ -2,13 +2,16 @@ package config
 
 import (
 	"flag"
+	"log"
 	"strings"
+
+	"github.com/caarlos0/env/v6"
 )
 
 type AgentConfig struct {
-	RunAddr        string
-	PollInterval   int
-	ReportInterval int
+	RunAddr        string `env:"ADDRESS"`
+	PollInterval   int    `env:"REPORT_INTERVAL"`
+	ReportInterval int    `env:"POLL_INTERVAL"`
 }
 
 // обработка аргументов командной строки
@@ -22,8 +25,14 @@ func ParseAgentFlags() AgentConfig {
 	flag.IntVar(&cfg.PollInterval, "p", 2, "frequency of polling metrics from the runtime package")
 	flag.IntVar(&cfg.ReportInterval, "r", 10, "frequency of sending metrics to the server")
 
-	// парсим переданные серверу аргументы в зарегистрированные переменные
+	// парсим переданные серверу аргументы командной строки в зарегистрированные переменные
 	flag.Parse()
+
+	// парсим переменные окружения
+	err := env.Parse(&cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	if !strings.HasPrefix(cfg.RunAddr, "http://") {
 		cfg.RunAddr = "http://" + cfg.RunAddr
