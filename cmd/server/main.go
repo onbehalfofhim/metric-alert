@@ -6,6 +6,7 @@ import (
 
 	"github.com/onbehalfofhim/metric-alert/internal/config"
 	"github.com/onbehalfofhim/metric-alert/internal/handler"
+	"github.com/onbehalfofhim/metric-alert/internal/logger"
 	"github.com/onbehalfofhim/metric-alert/internal/repository"
 	"github.com/onbehalfofhim/metric-alert/internal/service"
 )
@@ -23,5 +24,7 @@ func run(cfg config.ServerConfig) error {
 	service := service.NewMetricService(storage)
 	handler := handler.New(service)
 
-	return http.ListenAndServe(cfg.RunAddr, handler.Route())
+	logger := logger.NewLogger()
+
+	return http.ListenAndServe(cfg.RunAddr, logger.RequestLogger(handler.Route()))
 }
