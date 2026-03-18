@@ -10,7 +10,7 @@ import (
 type (
 	// структура для хранения логгера
 	Logger struct {
-		sugar *zap.SugaredLogger
+		log *zap.Logger
 	}
 
 	// структура для хранения сведений об ответе
@@ -27,14 +27,14 @@ type (
 )
 
 func NewLogger() *Logger {
-	z, err := zap.NewDevelopment()
+	// создаём логер
+	zl, err := zap.NewProduction()
 	if err != nil {
-		// вызываем панику, если ошибка
 		panic(err)
 	}
 
 	return &Logger{
-		sugar: z.Sugar(),
+		log: zl,
 	}
 }
 
@@ -62,12 +62,13 @@ func (l Logger) RequestLogger(h http.Handler) http.Handler {
 		duration := time.Since(start)
 
 		// отправляем сведения о запросе в zap
-		l.sugar.Infoln(
-			"uri", r.RequestURI,
-			"method", r.Method,
-			"status", responseData.status, // получаем перехваченный код статуса ответа
-			"duration", duration,
-			"size", responseData.size, // получаем перехваченный размер ответа
+		l.log.Info(
+			"request",
+			zap.String("uri", r.RequestURI),
+			zap.String("method", r.Method),
+			zap.Int("status", responseData.status),
+			zap.Duration("duration", duration),
+			zap.Int("size", responseData.size),
 		)
 	}
 	// возвращаем функционально расширенный хендлер

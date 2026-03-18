@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	"log"
 	"time"
 
 	"github.com/onbehalfofhim/metric-alert/internal/agent"
@@ -33,7 +33,7 @@ func main() {
 
 		err := client.Send(metrics)
 		if err != nil {
-			fmt.Printf("Send falied: %s", err)
+			log.Printf("Send falied: %s", err)
 		}
 		collector.CommitPollCount(delta)
 	}
