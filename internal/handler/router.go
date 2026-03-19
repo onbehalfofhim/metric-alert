@@ -11,9 +11,11 @@ func (h *Handler) Route() http.Handler {
 
 	r.Get("/", h.RootHandler())
 	r.Route("/update", func(r chi.Router) {
+		r.Post("/", h.UpdateHandlerJSON())
 		r.Post("/{type}/{name}/{value}", h.UpdateHandler())
 	})
 	r.Route("/value", func(r chi.Router) {
+		r.Post("/", h.GetMetricHandlerJSON())
 		r.Get("/{type}/{name}", h.GetMetricHandler())
 	})
 

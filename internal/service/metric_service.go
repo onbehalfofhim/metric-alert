@@ -4,6 +4,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/onbehalfofhim/metric-alert/internal/models"
 	"github.com/onbehalfofhim/metric-alert/pkg/errors"
 )
 
@@ -49,8 +50,26 @@ func (s *MetricsService) UpdateMetric(mType, name, value string) error {
 	return errors.ErrInvalidType
 }
 
-func (s *MetricsService) GetMetric(mType, name string) (string, error) {
+func (s *MetricsService) UpdateMetricJson(metric models.Metric) error {
+	switch metric.MType {
+	case "gauge":
+		if metric.Value == nil {
+			return errors.ErrInvalidValue
+		}
+		name := strings.ToLower(metric.ID)
+		return s.storage.UpdateGauge(name, *metric.Value)
+	case "counter":
+		if metric.Delta == nil {
+			return errors.ErrInvalidValue
+		}
+		name := strings.ToLower(metric.ID)
+		return s.storage.UpdateCounter(name, *metric.Delta)
+	}
 
+	return errors.ErrInvalidType
+}
+
+func (s *MetricsService) GetMetric(mType, name string) (string, error) {
 	switch mType {
 
 	case "gauge":
@@ -69,6 +88,27 @@ func (s *MetricsService) GetMetric(mType, name string) (string, error) {
 	}
 
 	return "", errors.ErrInvalidType
+}
+
+func (s *MetricsService) GetMetricJSON(mType, name string) (models.Metric, error) {
+	value, err := s.GetMetric(mType, name)
+
+	if err != nil {
+		return models.Metric{}, err
+	}
+
+	switch mType {
+
+	case "gauge":
+		v, _ := strconv.ParseFloat(value, 64)
+		return models.NewGauge(name, v), nil
+
+	case "counter":
+		v, _ := strconv.ParseInt(value, 10, 64)
+		return models.NewCounter(name, v), nil
+	}
+
+	return models.Metric{}, errors.ErrInvalidType
 }
 
 func (s *MetricsService) GetListGauges() map[string]float64 {

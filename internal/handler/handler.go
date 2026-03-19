@@ -1,12 +1,14 @@
 package handler
 
 import (
+	"encoding/json"
 	"net/http"
 	"sort"
 	"strconv"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/onbehalfofhim/metric-alert/internal/models"
 	"github.com/onbehalfofhim/metric-alert/internal/service"
 	"github.com/onbehalfofhim/metric-alert/internal/templates"
 	"github.com/onbehalfofhim/metric-alert/pkg/errors"
@@ -97,6 +99,34 @@ func (h *Handler) UpdateHandler() http.HandlerFunc {
 	}
 }
 
+func (h *Handler) UpdateHandlerJSON() http.HandlerFunc {
+	return func(res http.ResponseWriter, req *http.Request) {
+		if req.Header.Get("Content-Type") != "application/json" {
+			http.Error(res, "invalid content type", http.StatusBadRequest)
+			return
+		}
+
+		var m models.Metric
+		if err := json.NewDecoder(req.Body).Decode(&m); err != nil {
+			http.Error(res, "bad json", http.StatusBadRequest)
+			return
+		}
+
+		if m.ID == "" {
+			http.Error(res, "missing metric's name", http.StatusNotFound)
+			return
+		}
+
+		err := h.service.UpdateMetricJson(m)
+		if err != nil {
+			http.Error(res, "invalid type, metric value or name", http.StatusBadRequest)
+			return
+		}
+
+		res.WriteHeader(http.StatusOK)
+	}
+}
+
 // Обработчик запроса на выдачу значения конкретной метрики
 func (h *Handler) GetMetricHandler() http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
@@ -122,5 +152,48 @@ func (h *Handler) GetMetricHandler() http.HandlerFunc {
 		res.WriteHeader(http.StatusOK)
 		res.Write([]byte(value))
 
+	}
+}
+
+func (h *Handler) GetMetricHandlerJSON() http.HandlerFunc {
+	return func(res http.ResponseWriter, req *http.Request) {
+		if req.Header.Get("Content-Type") != "application/json" {
+			http.Error(res, "invalid content type", http.StatusBadRequest)
+			return
+		}
+
+		var m models.Metric
+		if err := json.NewDecoder(req.Body).Decode(&m); err != nil {
+			http.Error(res, "bad json", http.StatusBadRequest)
+			return
+		}
+
+		if m.ID == "" {
+			http.Error(res, "missing metric's name", http.StatusNotFound)
+			return
+		}
+
+		resp, err := h.service.GetMetricJSON(m.MType, strings.ToLower(m.ID))
+		if err != nil {
+			switch err {
+			case errors.ErrMetricNotFound:
+				http.Error(res, "Metric not found", http.StatusNotFound)
+
+			case errors.ErrInvalidType:
+				http.Error(res, "Bad metric's type", http.StatusBadRequest)
+
+			default:
+				http.Error(res, "Server error", http.StatusInternalServerError)
+			}
+
+			return
+		}
+
+		enc := json.NewEncoder(res)
+		if err := enc.Encode(resp); err != nil {
+			http.Error(res, "cannot encode response body", http.StatusInternalServerError)
+		}
+
+		res.WriteHeader(http.StatusOK)
 	}
 }
