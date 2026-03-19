@@ -157,6 +157,8 @@ func (h *Handler) GetMetricHandler() http.HandlerFunc {
 
 func (h *Handler) GetMetricHandlerJSON() http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
+		res.Header().Set("Content-Type", "application/json")
+
 		if req.Header.Get("Content-Type") != "application/json" {
 			http.Error(res, "invalid content type", http.StatusBadRequest)
 			return
@@ -195,6 +197,5 @@ func (h *Handler) GetMetricHandlerJSON() http.HandlerFunc {
 		}
 
 		res.WriteHeader(http.StatusOK)
-		res.Header().Set("Content-Type", "application/json")
 	}
 }
