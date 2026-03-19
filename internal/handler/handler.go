@@ -117,7 +117,7 @@ func (h *Handler) UpdateHandlerJSON() http.HandlerFunc {
 			return
 		}
 
-		err := h.service.UpdateMetricJson(m)
+		err := h.service.UpdateMetricJSON(m)
 		if err != nil {
 			http.Error(res, "invalid type, metric value or name", http.StatusBadRequest)
 			return
@@ -195,5 +195,6 @@ func (h *Handler) GetMetricHandlerJSON() http.HandlerFunc {
 		}
 
 		res.WriteHeader(http.StatusOK)
+		res.Header().Set("Content-Type", "application/json")
 	}
 }

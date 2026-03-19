@@ -50,7 +50,7 @@ func (s *MetricsService) UpdateMetric(mType, name, value string) error {
 	return errors.ErrInvalidType
 }
 
-func (s *MetricsService) UpdateMetricJson(metric models.Metric) error {
+func (s *MetricsService) UpdateMetricJSON(metric models.Metric) error {
 	switch metric.MType {
 	case "gauge":
 		if metric.Value == nil {
