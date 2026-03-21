@@ -2,6 +2,7 @@ package agent
 
 import (
 	"bytes"
+	"compress/gzip"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -53,9 +54,15 @@ func (s *Sender) SendJSON(metrics []models.Metric) error {
 		uri := fmt.Sprintf("%s/update", s.URL)
 
 		buf.Reset()
-		enc := json.NewEncoder(buf)
+		gz := gzip.NewWriter(buf)
+
+		enc := json.NewEncoder(gz)
 		if err := enc.Encode(v); err != nil {
 			return fmt.Errorf("cannot encode request body: %w", err)
+		}
+
+		if err := gz.Close(); err != nil {
+			return err
 		}
 
 		req, err := http.NewRequest(http.MethodPost, uri, buf)
@@ -63,15 +70,18 @@ func (s *Sender) SendJSON(metrics []models.Metric) error {
 			return err
 		}
 		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Content-Encoding", "gzip")
+		req.Header.Set("Accept-Encoding", "gzip")
 
 		resp, err := s.Client.Do(req)
 		if err != nil {
 			return fmt.Errorf("cannot send a post-request: %w", err)
 		}
+		defer resp.Body.Close()
 		if resp.StatusCode == http.StatusNotFound || resp.StatusCode == http.StatusBadRequest {
 			return fmt.Errorf("bad request: %d", resp.StatusCode)
 		}
-		resp.Body.Close()
+
 	}
 
 	return nil

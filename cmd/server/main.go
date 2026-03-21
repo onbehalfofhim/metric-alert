@@ -4,6 +4,7 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/onbehalfofhim/metric-alert/internal/compress"
 	"github.com/onbehalfofhim/metric-alert/internal/config"
 	"github.com/onbehalfofhim/metric-alert/internal/handler"
 	"github.com/onbehalfofhim/metric-alert/internal/logger"
@@ -26,5 +27,5 @@ func run(cfg config.ServerConfig) error {
 
 	logger := logger.NewLogger()
 
-	return http.ListenAndServe(cfg.RunAddr, logger.RequestLogger(handler.Route()))
+	return http.ListenAndServe(cfg.RunAddr, logger.RequestLogger(compress.GzipMiddleware(handler.Route())))
 }

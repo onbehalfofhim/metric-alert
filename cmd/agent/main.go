@@ -31,7 +31,13 @@ func main() {
 
 		metrics, delta := collector.PrepareMetrics()
 
-		err := client.SendJSON(metrics)
+		var err error
+		if cfg.SendType == "simple" {
+			err = client.Send(metrics)
+		} else {
+			err = client.SendJSON(metrics)
+		}
+
 		if err != nil {
 			log.Printf("Send falied: %s", err)
 		}

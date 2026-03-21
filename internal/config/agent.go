@@ -12,6 +12,7 @@ type AgentConfig struct {
 	RunAddr        string `env:"ADDRESS"`
 	PollInterval   int    `env:"REPORT_INTERVAL"`
 	ReportInterval int    `env:"POLL_INTERVAL"`
+	SendType       string
 }
 
 // обработка аргументов командной строки
@@ -24,6 +25,7 @@ func ParseAgentFlags() AgentConfig {
 	flag.StringVar(&cfg.RunAddr, "a", "localhost:8080", "address and port to run server")
 	flag.IntVar(&cfg.PollInterval, "p", 2, "frequency of polling metrics from the runtime package")
 	flag.IntVar(&cfg.ReportInterval, "r", 10, "frequency of sending metrics to the server")
+	flag.StringVar(&cfg.SendType, "s", "simple", "type of request: simple or json")
 
 	// парсим переданные серверу аргументы командной строки в зарегистрированные переменные
 	flag.Parse()
