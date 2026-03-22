@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/onbehalfofhim/metric-alert/internal/models"
+	"github.com/onbehalfofhim/metric-alert/internal/repository/fileStorage"
 	"github.com/onbehalfofhim/metric-alert/pkg/errors"
 )
 
@@ -22,10 +23,14 @@ type Storage interface {
 
 type MetricsService struct {
 	storage Storage
+	file    *fileStorage.FileStorage
 }
 
-func NewMetricService(storage Storage) *MetricsService {
-	return &MetricsService{storage: storage}
+func NewMetricService(storage Storage, filepath string) *MetricsService {
+	return &MetricsService{
+		storage: storage,
+		file:    fileStorage.NewFileStorage(filepath),
+	}
 }
 
 func (s *MetricsService) UpdateMetric(mType, name, value string) error {
@@ -115,6 +120,39 @@ func (s *MetricsService) GetListGauges() map[string]float64 {
 	return s.storage.GetListGauges()
 }
 
-func (s *MetricsService) GerListCounters() map[string]int64 {
+func (s *MetricsService) GetListCounters() map[string]int64 {
 	return s.storage.GetListCounters()
+}
+
+func (s *MetricsService) GetAll() []models.Metric {
+	gauges := s.storage.GetListGauges()
+	counters := s.storage.GetListCounters()
+
+	var metrics []models.Metric
+	for k, v := range gauges {
+		metrics = append(metrics, models.NewGauge(k, v))
+	}
+	for k, v := range counters {
+		metrics = append(metrics, models.NewCounter(k, v))
+	}
+
+	return metrics
+}
+
+func (s *MetricsService) LoadFromFile() error {
+	metrics, err := s.file.Load()
+	if err != nil {
+		return err
+	}
+
+	for _, m := range metrics {
+		s.UpdateMetricJSON(m)
+	}
+	return nil
+}
+
+func (s *MetricsService) SaveToFile() error {
+	metrics := s.GetAll()
+
+	return s.file.Save(metrics)
 }

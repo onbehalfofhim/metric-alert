@@ -56,7 +56,7 @@ func (h *Handler) RootHandler() http.HandlerFunc {
 
 		//форматируем метрики типа counter
 		counters := mapToMetricView(
-			h.service.GerListCounters(),
+			h.service.GetListCounters(),
 			func(v int64) string {
 				return strconv.FormatInt(v, 10)
 			},
