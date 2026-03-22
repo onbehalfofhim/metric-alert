@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/onbehalfofhim/metric-alert/internal/models"
-	"github.com/onbehalfofhim/metric-alert/internal/repository/fileStorage"
+	"github.com/onbehalfofhim/metric-alert/internal/repository/filestorage"
 	"github.com/onbehalfofhim/metric-alert/pkg/errors"
 )
 
