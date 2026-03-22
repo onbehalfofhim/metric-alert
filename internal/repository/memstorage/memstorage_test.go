@@ -1,8 +1,9 @@
-package memstorage
+package memstorage_test
 
 import (
 	"testing"
 
+	"github.com/onbehalfofhim/metric-alert/internal/repository/memstorage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -38,7 +39,7 @@ func TestMemStorage_UpdateGauge(t *testing.T) {
 			want:  -8.5,
 		},
 	}
-	s := NewMemStorage()
+	s := memstorage.NewMemStorage()
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			err := s.UpdateGauge(test.value.metric, test.value.value)
@@ -79,7 +80,7 @@ func TestMemStorage_UpdateCounter(t *testing.T) {
 		},
 	}
 
-	s := NewMemStorage()
+	s := memstorage.NewMemStorage()
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -105,7 +106,7 @@ func TestMemStorage_GetGauge(t *testing.T) {
 		{"negative", "test2", 0, "metric not found"},
 	}
 
-	s := NewMemStorage()
+	s := memstorage.NewMemStorage()
 	s.UpdateGauge("test", 7.6)
 
 	for _, tt := range tests {
@@ -130,7 +131,7 @@ func TestMemStorage_GetCounter(t *testing.T) {
 		{"negative", "test2", 0, "metric not found"},
 	}
 
-	s := NewMemStorage()
+	s := memstorage.NewMemStorage()
 	s.UpdateCounter("test", 7)
 
 	for _, tt := range tests {
@@ -179,7 +180,7 @@ func TestMemStorage_GetListGauges(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s := NewMemStorage()
+			s := memstorage.NewMemStorage()
 
 			for k, v := range tt.initial {
 				_ = s.UpdateGauge(k, v)
@@ -227,7 +228,7 @@ func TestMemStorage_GetListCounters(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s := NewMemStorage()
+			s := memstorage.NewMemStorage()
 
 			for k, v := range tt.initial {
 				_ = s.UpdateCounter(k, v)
@@ -241,7 +242,7 @@ func TestMemStorage_GetListCounters(t *testing.T) {
 }
 
 func TestMemStorage_GetListGauges_ReturnsCopy(t *testing.T) {
-	s := NewMemStorage()
+	s := memstorage.NewMemStorage()
 
 	require.NoError(t, s.UpdateGauge("alloc", 10))
 
@@ -256,7 +257,7 @@ func TestMemStorage_GetListGauges_ReturnsCopy(t *testing.T) {
 }
 
 func TestMemStorage_GetListCounters_ReturnsCopy(t *testing.T) {
-	s := NewMemStorage()
+	s := memstorage.NewMemStorage()
 
 	require.NoError(t, s.UpdateCounter("test", 10))
 
