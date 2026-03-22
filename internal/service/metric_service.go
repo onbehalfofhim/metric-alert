@@ -23,13 +23,13 @@ type Storage interface {
 
 type MetricsService struct {
 	storage Storage
-	file    *fileStorage.FileStorage
+	file    *filestorage.FileStorage
 }
 
 func NewMetricService(storage Storage, filepath string) *MetricsService {
 	return &MetricsService{
 		storage: storage,
-		file:    fileStorage.NewFileStorage(filepath),
+		file:    filestorage.NewFileStorage(filepath),
 	}
 }
 

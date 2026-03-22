@@ -3,7 +3,7 @@ package service_test
 import (
 	"testing"
 
-	"github.com/onbehalfofhim/metric-alert/internal/repository/memStorage"
+	"github.com/onbehalfofhim/metric-alert/internal/repository/memstorage"
 	"github.com/onbehalfofhim/metric-alert/internal/service"
 	"github.com/stretchr/testify/assert"
 )
@@ -24,7 +24,7 @@ func TestMetricsService_UpdateMetric(t *testing.T) {
 		{"wrong counter value", "counter", "test", "jfjfkf", true, "unknown metric value"},
 	}
 
-	storage := memStorage.NewMemStorage()
+	storage := memstorage.NewMemStorage()
 	s := service.NewMetricService(storage, "filename.txt")
 
 	for _, tt := range tests {
@@ -54,7 +54,7 @@ func TestMetricsService_GetMetric(t *testing.T) {
 		{"wrong gauge metric name", "gauge", "heap", "", true, "metric not found"},
 	}
 
-	storage := memStorage.NewMemStorage()
+	storage := memstorage.NewMemStorage()
 	s := service.NewMetricService(storage, "filename.txt")
 
 	s.UpdateMetric("counter", "test", "10")

@@ -10,7 +10,7 @@ import (
 	"github.com/onbehalfofhim/metric-alert/internal/config"
 	"github.com/onbehalfofhim/metric-alert/internal/handler"
 	"github.com/onbehalfofhim/metric-alert/internal/logger"
-	"github.com/onbehalfofhim/metric-alert/internal/repository/memStorage"
+	"github.com/onbehalfofhim/metric-alert/internal/repository/memstorage"
 	"github.com/onbehalfofhim/metric-alert/internal/service"
 )
 
@@ -23,7 +23,7 @@ func main() {
 }
 
 func run(cfg config.ServerConfig) error {
-	storage := memStorage.NewMemStorage()
+	storage := memstorage.NewMemStorage()
 	service := service.NewMetricService(storage, cfg.FilePath)
 	handler := handler.New(service)
 

@@ -9,12 +9,12 @@ import (
 	"github.com/go-resty/resty/v2"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/onbehalfofhim/metric-alert/internal/repository/memStorage"
+	"github.com/onbehalfofhim/metric-alert/internal/repository/memstorage"
 	"github.com/onbehalfofhim/metric-alert/internal/service"
 )
 
 func Test_RootHandler(t *testing.T) {
-	storage := memStorage.NewMemStorage()
+	storage := memstorage.NewMemStorage()
 	service := service.NewMetricService(storage, "filename.txt")
 	h := New(service)
 
@@ -66,7 +66,7 @@ func Test_UpdateHandler(t *testing.T) {
 		{name: "correct query #2", request: "/update/counter/metric1/6", expectedCode: http.StatusOK},
 	}
 
-	storage := memStorage.NewMemStorage()
+	storage := memstorage.NewMemStorage()
 	service := service.NewMetricService(storage, "filename.txt")
 	h := New(service)
 
@@ -95,7 +95,7 @@ func Test_UpdateHandler(t *testing.T) {
 }
 
 func Test_GetMetricHandler(t *testing.T) {
-	storage := memStorage.NewMemStorage()
+	storage := memstorage.NewMemStorage()
 	service := service.NewMetricService(storage, "filename.txt")
 	h := New(service)
 
