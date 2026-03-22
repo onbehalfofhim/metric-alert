@@ -6,13 +6,13 @@ import (
 	"testing"
 
 	"github.com/onbehalfofhim/metric-alert/internal/handler"
-	"github.com/onbehalfofhim/metric-alert/internal/repository/memstorage"
+	"github.com/onbehalfofhim/metric-alert/internal/repository/inmemory"
 	"github.com/onbehalfofhim/metric-alert/internal/service"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestHandler_Route(t *testing.T) {
-	storage := memstorage.NewMemStorage()
+	storage := inmemory.NewMemStorage()
 	service := service.NewMetricService(storage, "filename.txt")
 	h := handler.New(service)
 

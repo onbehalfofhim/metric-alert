@@ -1,4 +1,4 @@
-package memstorage
+package inmemory
 
 import (
 	"sync"

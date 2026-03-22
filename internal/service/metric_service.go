@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/onbehalfofhim/metric-alert/internal/models"
-	"github.com/onbehalfofhim/metric-alert/internal/repository/filestorage"
+	"github.com/onbehalfofhim/metric-alert/internal/repository/file"
 	"github.com/onbehalfofhim/metric-alert/pkg/errors"
 )
 
@@ -23,13 +23,13 @@ type Storage interface {
 
 type MetricsService struct {
 	storage Storage
-	file    *filestorage.FileStorage
+	file    *file.FileStorage
 }
 
 func NewMetricService(storage Storage, filepath string) *MetricsService {
 	return &MetricsService{
 		storage: storage,
-		file:    filestorage.NewFileStorage(filepath),
+		file:    file.NewFileStorage(filepath),
 	}
 }
 
