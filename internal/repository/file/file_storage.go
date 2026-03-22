@@ -33,8 +33,8 @@ func (fs *FileStorage) Save(metrics []models.Metric) error {
 	return nil
 }
 
-func (f *FileStorage) Load() ([]models.Metric, error) {
-	file, err := os.Open(f.path)
+func (fs *FileStorage) Load() ([]models.Metric, error) {
+	file, err := os.Open(fs.path)
 	if err != nil {
 		if os.IsNotExist(err) {
 			// файла нет — это не ошибка, просто пустые данные
