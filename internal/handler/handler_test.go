@@ -3,20 +3,23 @@ package handler
 import (
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-resty/resty/v2"
 	"github.com/stretchr/testify/assert"
 
+	"github.com/onbehalfofhim/metric-alert/internal/logger"
 	"github.com/onbehalfofhim/metric-alert/internal/repository/inmemory"
 	"github.com/onbehalfofhim/metric-alert/internal/service"
 )
 
 func Test_RootHandler(t *testing.T) {
 	storage := inmemory.NewMemStorage()
-	service := service.NewMetricService(storage, "filename.txt")
-	h := New(service)
+	service := service.NewMetricService(storage)
+	logger := logger.NewLogger()
+	h := New(service, logger)
 
 	r := chi.NewRouter()
 	r.Get("/", h.RootHandler())
@@ -57,8 +60,8 @@ func Test_UpdateHandler(t *testing.T) {
 		expectedCode int
 	}{
 		{name: "short update query", request: "/update/", expectedCode: http.StatusNotFound},
-		{name: "without metric name", request: "/update/gauge//3.6", expectedCode: http.StatusNotFound},
-		{name: "without metric name #2", request: "/update/counter//3", expectedCode: http.StatusNotFound},
+		{name: "without metric name", request: "/update/gauge//3.6", expectedCode: http.StatusBadRequest},
+		{name: "without metric name #2", request: "/update/counter//3", expectedCode: http.StatusBadRequest},
 		{name: "wrong value", request: "/update/counter/metric1/3.6", expectedCode: http.StatusBadRequest},
 		{name: "wrong value #2", request: "/update/gauge/metric1/abc", expectedCode: http.StatusBadRequest},
 		{name: "wrong metric type", request: "/update/unknown/metric1/5", expectedCode: http.StatusBadRequest},
@@ -67,8 +70,9 @@ func Test_UpdateHandler(t *testing.T) {
 	}
 
 	storage := inmemory.NewMemStorage()
-	service := service.NewMetricService(storage, "filename.txt")
-	h := New(service)
+	service := service.NewMetricService(storage)
+	logger := logger.NewLogger()
+	h := New(service, logger)
 
 	r := chi.NewRouter()
 	r.Post("/update/{type}/{name}/{value}", h.UpdateHandler())
@@ -96,8 +100,9 @@ func Test_UpdateHandler(t *testing.T) {
 
 func Test_GetMetricHandler(t *testing.T) {
 	storage := inmemory.NewMemStorage()
-	service := service.NewMetricService(storage, "filename.txt")
-	h := New(service)
+	service := service.NewMetricService(storage)
+	logger := logger.NewLogger()
+	h := New(service, logger)
 
 	service.UpdateMetric("gauge", "metric1", "8.7")
 	service.UpdateMetric("counter", "metric2", "-9")
@@ -139,13 +144,13 @@ func Test_GetMetricHandler(t *testing.T) {
 			name:         "metric not exists",
 			request:      "/value/counter/metric3",
 			expectedCode: http.StatusNotFound,
-			want:         "Metric not found\n",
+			want:         http.StatusText(http.StatusNotFound),
 		},
 		{
 			name:         "bad metric type",
 			request:      "/value/unknown/metric1",
 			expectedCode: http.StatusBadRequest,
-			want:         "Bad metric's type\n",
+			want:         http.StatusText(http.StatusBadRequest),
 		},
 	}
 
@@ -161,7 +166,7 @@ func Test_GetMetricHandler(t *testing.T) {
 			assert.NoError(t, err, "error making HTTP request")
 
 			assert.Equal(t, tt.expectedCode, resp.StatusCode(), "Response code didn't match expected")
-			assert.Equal(t, tt.want, string(resp.Body()), "Response value didn't match expected")
+			assert.Equal(t, tt.want, strings.TrimSpace(string(resp.Body())), "Response value didn't match expected")
 		})
 	}
 

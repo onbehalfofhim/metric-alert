@@ -1,55 +1,129 @@
 package file
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
+	"io"
 	"os"
+	"strings"
+	"time"
 
+	"github.com/onbehalfofhim/metric-alert/internal/logger"
 	"github.com/onbehalfofhim/metric-alert/internal/models"
+	"github.com/onbehalfofhim/metric-alert/internal/repository"
 )
 
 type FileStorage struct {
-	path string
+	storage repository.Storage
+	file    *os.File
+	logger  *logger.Logger
 }
 
-func NewFileStorage(filename string) *FileStorage {
-	return &FileStorage{
-		path: filename,
-	}
-}
-
-func (fs *FileStorage) Save(metrics []models.Metric) error {
-	file, err := os.Create(fs.path)
+func NewFileStorage(storage repository.Storage, filePath string, logger *logger.Logger) (*FileStorage, error) {
+	file, err := os.OpenFile(filePath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0666)
 	if err != nil {
+		return nil, err
+	}
+
+	return &FileStorage{
+		storage: storage,
+		file:    file,
+		logger:  logger,
+	}, nil
+}
+
+func (fs *FileStorage) save(metrics []models.Metric) error {
+	// очищаем файл
+	if err := fs.file.Truncate(0); err != nil {
 		return err
 	}
-	defer file.Close()
 
-	enc := json.NewEncoder(file)
+	if _, err := fs.file.Seek(0, 0); err != nil {
+		return err
+	}
 
-	if err := enc.Encode(metrics); err != nil {
+	if err := json.NewEncoder(fs.file).Encode(metrics); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (fs *FileStorage) Load() ([]models.Metric, error) {
-	file, err := os.Open(fs.path)
-	if err != nil {
-		if os.IsNotExist(err) {
-			// файла нет — это не ошибка, просто пустые данные
-			return nil, nil
-		}
-		return nil, err
-	}
-	defer file.Close()
-
+func (fs *FileStorage) load() ([]models.Metric, error) {
 	var metrics []models.Metric
 
-	dec := json.NewDecoder(file)
-	if err := dec.Decode(&metrics); err != nil {
+	if _, err := fs.file.Seek(0, 0); err != nil {
+		return nil, err
+	}
+
+	if err := json.NewDecoder(fs.file).Decode(&metrics); err != nil {
+		if errors.Is(err, io.EOF) {
+			return metrics, nil // пустой файл — это ок
+		}
 		return nil, err
 	}
 
 	return metrics, nil
+}
+
+func (fs *FileStorage) LoadFromFile() error {
+	metrics, err := fs.load()
+	if err != nil {
+		return err
+	}
+
+	for _, m := range metrics {
+		switch m.MType {
+		case "gauge":
+			name := strings.ToLower(m.ID)
+			return fs.storage.UpdateGauge(name, *m.Value)
+		case "counter":
+			name := strings.ToLower(m.ID)
+			return fs.storage.UpdateCounter(name, *m.Delta)
+		}
+	}
+	return nil
+}
+
+func (fs *FileStorage) GetMetrics() []models.Metric {
+	gauges := fs.storage.GetListGauges()
+	counters := fs.storage.GetListCounters()
+
+	var metrics []models.Metric
+	for k, v := range gauges {
+		metrics = append(metrics, models.NewGauge(k, v))
+	}
+	for k, v := range counters {
+		metrics = append(metrics, models.NewCounter(k, v))
+	}
+
+	return metrics
+}
+
+func (fs *FileStorage) SaveToFile() error {
+	metrics := fs.GetMetrics()
+
+	return fs.save(metrics)
+}
+
+func (fs *FileStorage) RunBackup(ctx context.Context, interval time.Duration) {
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			if err := fs.SaveToFile(); err != nil {
+				fs.logger.Error("failed to save metrics", "error", err)
+			}
+		case <-ctx.Done():
+			fs.logger.Info("backup stopped")
+			return
+		}
+	}
+}
+
+func (f *FileStorage) Close() error {
+	return f.file.Close()
 }

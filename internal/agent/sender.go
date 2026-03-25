@@ -56,18 +56,17 @@ func (s *Sender) SendJSON(metrics []models.Metric) error {
 		buf.Reset()
 		gz := gzip.NewWriter(buf)
 
-		enc := json.NewEncoder(gz)
-		if err := enc.Encode(v); err != nil {
-			return fmt.Errorf("cannot encode request body: %w", err)
+		if err := json.NewEncoder(gz).Encode(v); err != nil {
+			return fmt.Errorf("can't encode request body: %w", err)
 		}
 
 		if err := gz.Close(); err != nil {
-			return err
+			return fmt.Errorf("can't close gzip: %w", err)
 		}
 
 		req, err := http.NewRequest(http.MethodPost, uri, buf)
 		if err != nil {
-			return err
+			return fmt.Errorf("can't create request: %w", err)
 		}
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("Content-Encoding", "gzip")
@@ -75,7 +74,7 @@ func (s *Sender) SendJSON(metrics []models.Metric) error {
 
 		resp, err := s.Client.Do(req)
 		if err != nil {
-			return fmt.Errorf("cannot send a post-request: %w", err)
+			return fmt.Errorf("can't send a post-request: %w", err)
 		}
 		defer resp.Body.Close()
 		if resp.StatusCode == http.StatusNotFound || resp.StatusCode == http.StatusBadRequest {

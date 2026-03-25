@@ -1,9 +1,8 @@
 package inmemory
 
 import (
+	"fmt"
 	"sync"
-
-	"github.com/onbehalfofhim/metric-alert/pkg/errors"
 )
 
 // Структура для хранения метрик
@@ -48,7 +47,7 @@ func (s *MemStorage) GetGauge(name string) (float64, error) {
 
 	v, ok := s.gauges[name]
 	if !ok {
-		return 0, errors.ErrMetricNotFound
+		return 0, fmt.Errorf("metric not found")
 	}
 
 	return v, nil
@@ -61,7 +60,7 @@ func (s *MemStorage) GetCounter(name string) (int64, error) {
 
 	v, ok := s.counters[name]
 	if !ok {
-		return 0, errors.ErrMetricNotFound
+		return 0, fmt.Errorf("metric not found")
 	}
 	return v, nil
 }

@@ -5,31 +5,16 @@ import (
 	"strings"
 
 	"github.com/onbehalfofhim/metric-alert/internal/models"
-	"github.com/onbehalfofhim/metric-alert/internal/repository/file"
-	"github.com/onbehalfofhim/metric-alert/pkg/errors"
+	"github.com/onbehalfofhim/metric-alert/internal/repository"
 )
 
-// Интерфейс для взаимодействия с хранилищем метрик
-type Storage interface {
-	UpdateGauge(name string, value float64) error
-	UpdateCounter(name string, value int64) error
-
-	GetGauge(name string) (float64, error)
-	GetCounter(name string) (int64, error)
-
-	GetListGauges() map[string]float64
-	GetListCounters() map[string]int64
-}
-
 type MetricsService struct {
-	storage Storage
-	file    *file.FileStorage
+	storage repository.Storage
 }
 
-func NewMetricService(storage Storage, filepath string) *MetricsService {
+func NewMetricService(storage repository.Storage) *MetricsService {
 	return &MetricsService{
 		storage: storage,
-		file:    file.NewFileStorage(filepath),
 	}
 }
 
@@ -38,7 +23,7 @@ func (s *MetricsService) UpdateMetric(mType, name, value string) error {
 	case "gauge":
 		v, err := strconv.ParseFloat(value, 64)
 		if err != nil {
-			return errors.ErrInvalidValue
+			return ErrInvalidValue
 		}
 		name = strings.ToLower(name)
 		return s.storage.UpdateGauge(name, v)
@@ -46,32 +31,32 @@ func (s *MetricsService) UpdateMetric(mType, name, value string) error {
 	case "counter":
 		v, err := strconv.ParseInt(value, 10, 64)
 		if err != nil {
-			return errors.ErrInvalidValue
+			return ErrInvalidValue
 		}
 		name = strings.ToLower(name)
 		return s.storage.UpdateCounter(name, v)
 	}
 
-	return errors.ErrInvalidType
+	return ErrInvalidType
 }
 
 func (s *MetricsService) UpdateMetricJSON(metric models.Metric) error {
 	switch metric.MType {
 	case "gauge":
 		if metric.Value == nil {
-			return errors.ErrInvalidValue
+			return ErrInvalidValue
 		}
 		name := strings.ToLower(metric.ID)
 		return s.storage.UpdateGauge(name, *metric.Value)
 	case "counter":
 		if metric.Delta == nil {
-			return errors.ErrInvalidValue
+			return ErrInvalidValue
 		}
 		name := strings.ToLower(metric.ID)
 		return s.storage.UpdateCounter(name, *metric.Delta)
 	}
 
-	return errors.ErrInvalidType
+	return ErrInvalidType
 }
 
 func (s *MetricsService) GetMetric(mType, name string) (string, error) {
@@ -80,19 +65,19 @@ func (s *MetricsService) GetMetric(mType, name string) (string, error) {
 	case "gauge":
 		v, err := s.storage.GetGauge(name)
 		if err != nil {
-			return "", err
+			return "", ErrMetricNotFound
 		}
 		return strconv.FormatFloat(v, 'f', -1, 64), nil
 
 	case "counter":
 		v, err := s.storage.GetCounter(name)
 		if err != nil {
-			return "", err
+			return "", ErrMetricNotFound
 		}
 		return strconv.FormatInt(v, 10), nil
 	}
 
-	return "", errors.ErrInvalidType
+	return "", ErrInvalidType
 }
 
 func (s *MetricsService) GetMetricJSON(mType, name string) (models.Metric, error) {
@@ -113,7 +98,7 @@ func (s *MetricsService) GetMetricJSON(mType, name string) (models.Metric, error
 		return models.NewCounter(name, v), nil
 	}
 
-	return models.Metric{}, errors.ErrInvalidType
+	return models.Metric{}, ErrInvalidType
 }
 
 func (s *MetricsService) GetListGauges() map[string]float64 {
@@ -122,37 +107,4 @@ func (s *MetricsService) GetListGauges() map[string]float64 {
 
 func (s *MetricsService) GetListCounters() map[string]int64 {
 	return s.storage.GetListCounters()
-}
-
-func (s *MetricsService) GetAll() []models.Metric {
-	gauges := s.storage.GetListGauges()
-	counters := s.storage.GetListCounters()
-
-	var metrics []models.Metric
-	for k, v := range gauges {
-		metrics = append(metrics, models.NewGauge(k, v))
-	}
-	for k, v := range counters {
-		metrics = append(metrics, models.NewCounter(k, v))
-	}
-
-	return metrics
-}
-
-func (s *MetricsService) LoadFromFile() error {
-	metrics, err := s.file.Load()
-	if err != nil {
-		return err
-	}
-
-	for _, m := range metrics {
-		s.UpdateMetricJSON(m)
-	}
-	return nil
-}
-
-func (s *MetricsService) SaveToFile() error {
-	metrics := s.GetAll()
-
-	return s.file.Save(metrics)
 }

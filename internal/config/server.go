@@ -2,37 +2,46 @@ package config
 
 import (
 	"flag"
-	"log"
+	"fmt"
+	"time"
 
-	"github.com/caarlos0/env/v6"
+	"github.com/caarlos0/env/v11"
 )
 
 type ServerConfig struct {
-	RunAddr       string `env:"ADDRESS"`
-	StoreInterval int    `env:"STORE_INTERVAL"`
-	FilePath      string `env:"FILE_STORAGE_PATH"`
-	Restore       bool   `env:"RESTORE"`
+	RunAddr       string        `env:"ADDRESS"`
+	StoreInterval time.Duration `env:"STORE_INTERVAL"`
+	FilePath      string        `env:"FILE_STORAGE_PATH"`
+	Restore       bool          `env:"RESTORE"`
 }
 
 // обработка аргументов командной строки
 // и сохраняет их значения в структуре
-func ParseServerFlags() ServerConfig {
+func ParseServerFlags() (ServerConfig, error) {
 	var cfg ServerConfig
 
 	// регистрируем переменную RunAddr
 	// как аргумент -a со значением по умолчанию
 	flag.StringVar(&cfg.RunAddr, "a", "localhost:8080", "address and port to run server")
-	flag.IntVar(&cfg.StoreInterval, "i", 300, "frequency of writing metrics in file")
 	flag.StringVar(&cfg.FilePath, "f", "./metrics.txt", "file path to write metrics")
 	flag.BoolVar(&cfg.Restore, "r", true, "load metrics from storage")
+
+	var storeInterval int
+	flag.IntVar(&storeInterval, "i", 300, "store interval in seconds")
+
 	// парсим переданные серверу аргументы командной строки в зарегистрированные переменные
 	flag.Parse()
+
+	if storeInterval <= 0 {
+		return cfg, fmt.Errorf("invalid store interval: %d (must be > 0)", storeInterval)
+	}
+	cfg.StoreInterval = time.Duration(storeInterval) * time.Second
 
 	// парсим переменные окружения
 	err := env.Parse(&cfg)
 	if err != nil {
-		log.Fatal(err)
+		return cfg, fmt.Errorf("can't parse environment variables: %w", err)
 	}
 
-	return cfg
+	return cfg, nil
 }

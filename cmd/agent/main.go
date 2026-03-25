@@ -1,15 +1,20 @@
 package main
 
 import (
-	"log"
 	"time"
 
 	"github.com/onbehalfofhim/metric-alert/internal/agent"
 	"github.com/onbehalfofhim/metric-alert/internal/config"
+	"github.com/onbehalfofhim/metric-alert/internal/logger"
 )
 
 func main() {
-	cfg := config.ParseAgentFlags()
+	cfg, err := config.ParseAgentFlags()
+	logger := logger.NewLogger()
+
+	if err != nil {
+		logger.Error("failed to set environment variables", "error", err)
+	}
 
 	// создание сборщика метрик
 	collector := agent.NewCollector()
@@ -31,15 +36,9 @@ func main() {
 
 		metrics, delta := collector.PrepareMetrics()
 
-		var err error
-		if cfg.SendType == "simple" {
-			err = client.Send(metrics)
-		} else {
-			err = client.SendJSON(metrics)
-		}
-
+		err := client.SendJSON(metrics)
 		if err != nil {
-			log.Printf("Send falied: %s", err)
+			logger.Error("failed to send metrics batch", "error", err)
 		}
 		collector.CommitPollCount(delta)
 	}

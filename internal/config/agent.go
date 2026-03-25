@@ -2,10 +2,10 @@ package config
 
 import (
 	"flag"
-	"log"
+	"fmt"
 	"strings"
 
-	"github.com/caarlos0/env/v6"
+	"github.com/caarlos0/env/v11"
 )
 
 type AgentConfig struct {
@@ -17,7 +17,7 @@ type AgentConfig struct {
 
 // обработка аргументов командной строки
 // и сохранение их значения в структуре
-func ParseAgentFlags() AgentConfig {
+func ParseAgentFlags() (AgentConfig, error) {
 	var cfg AgentConfig
 
 	// регистрируем переменные
@@ -33,12 +33,12 @@ func ParseAgentFlags() AgentConfig {
 	// парсим переменные окружения
 	err := env.Parse(&cfg)
 	if err != nil {
-		log.Fatal(err)
+		return cfg, fmt.Errorf("can't parse environment variables: %w", err)
 	}
 
 	if !strings.HasPrefix(cfg.RunAddr, "http://") {
 		cfg.RunAddr = "http://" + cfg.RunAddr
 	}
 
-	return cfg
+	return cfg, nil
 }

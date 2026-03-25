@@ -1,12 +1,14 @@
-package compress
+package middleware
 
 import (
 	"net/http"
 	"strings"
+
+	"github.com/onbehalfofhim/metric-alert/internal/compress"
 )
 
 func GzipMiddleware(h http.Handler) http.Handler {
-	gzipFn := func(w http.ResponseWriter, r *http.Request) {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// по умолчанию устанавливаем оригинальный http.ResponseWriter как тот,
 		// который будем передавать следующей функции
 		ow := w
@@ -16,7 +18,7 @@ func GzipMiddleware(h http.Handler) http.Handler {
 		supportsGzip := strings.Contains(acceptEncoding, "gzip")
 		if supportsGzip {
 			// оборачиваем оригинальный http.ResponseWriter новым с поддержкой сжатия
-			cw := newCompressWriter(w)
+			cw := compress.NewCompressWriter(w)
 			// меняем оригинальный http.ResponseWriter на новый
 			ow = cw
 			// не забываем отправить клиенту все сжатые данные после завершения middleware
@@ -29,7 +31,7 @@ func GzipMiddleware(h http.Handler) http.Handler {
 
 		if sendsGzip {
 			// оборачиваем тело запроса в io.Reader с поддержкой декомпрессии
-			cr, err := newCompressReader(r.Body)
+			cr, err := compress.NewCompressReader(r.Body)
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
 				return
@@ -41,7 +43,5 @@ func GzipMiddleware(h http.Handler) http.Handler {
 
 		// передаём управление хендлеру
 		h.ServeHTTP(ow, r)
-	}
-
-	return http.HandlerFunc(gzipFn)
+	})
 }

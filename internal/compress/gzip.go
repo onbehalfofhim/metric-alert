@@ -15,7 +15,7 @@ type compressWriter struct {
 	wroteHeader bool
 }
 
-func newCompressWriter(w http.ResponseWriter) *compressWriter {
+func NewCompressWriter(w http.ResponseWriter) *compressWriter {
 	return &compressWriter{
 		w: w,
 	}
@@ -74,7 +74,7 @@ type compressReader struct {
 	zr *gzip.Reader
 }
 
-func newCompressReader(r io.ReadCloser) (*compressReader, error) {
+func NewCompressReader(r io.ReadCloser) (*compressReader, error) {
 	zr, err := gzip.NewReader(r)
 	if err != nil {
 		return nil, err

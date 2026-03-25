@@ -4,10 +4,14 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/onbehalfofhim/metric-alert/internal/logger"
+	"github.com/onbehalfofhim/metric-alert/internal/middleware"
 )
 
-func (h *Handler) Route() http.Handler {
+func (h *Handler) Route(log *logger.Logger) http.Handler {
 	r := chi.NewRouter()
+	r.Use(middleware.RequestLogger(log))
+	r.Use(middleware.GzipMiddleware)
 
 	r.Get("/", h.RootHandler())
 	r.Route("/update", func(r chi.Router) {

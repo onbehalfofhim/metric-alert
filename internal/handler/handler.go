@@ -8,19 +8,21 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/onbehalfofhim/metric-alert/internal/logger"
 	"github.com/onbehalfofhim/metric-alert/internal/models"
 	"github.com/onbehalfofhim/metric-alert/internal/service"
 	"github.com/onbehalfofhim/metric-alert/internal/templates"
-	"github.com/onbehalfofhim/metric-alert/pkg/errors"
 )
 
 type Handler struct {
 	service *service.MetricsService
+	logger  *logger.Logger
 }
 
-func New(service *service.MetricsService) *Handler {
+func New(service *service.MetricsService, logger *logger.Logger) *Handler {
 	return &Handler{
 		service: service,
+		logger:  logger,
 	}
 }
 
@@ -72,7 +74,12 @@ func (h *Handler) RootHandler() http.HandlerFunc {
 
 		err := templates.RenderMetricsPage(res, data)
 		if err != nil {
-			http.Error(res, err.Error(), http.StatusInternalServerError)
+			h.logger.Error("internal server error", "error", err)
+
+			http.Error(res,
+				http.StatusText(http.StatusInternalServerError),
+				http.StatusInternalServerError,
+			)
 		}
 	}
 }
@@ -85,13 +92,13 @@ func (h *Handler) UpdateHandler() http.HandlerFunc {
 		metricName := chi.URLParam(req, "name")
 		metricValue := chi.URLParam(req, "value")
 		if metricName == "" {
-			http.Error(res, "Missing metric's name", http.StatusNotFound)
+			http.Error(res, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 			return
 		}
 
 		err := h.service.UpdateMetric(metricType, metricName, metricValue)
 		if err != nil {
-			http.Error(res, "Invalid type or metric name", http.StatusBadRequest)
+			http.Error(res, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 			return
 		}
 
@@ -102,24 +109,24 @@ func (h *Handler) UpdateHandler() http.HandlerFunc {
 func (h *Handler) UpdateHandlerJSON() http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		if req.Header.Get("Content-Type") != "application/json" {
-			http.Error(res, "invalid content type", http.StatusBadRequest)
+			http.Error(res, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 			return
 		}
 
 		var m models.Metric
 		if err := json.NewDecoder(req.Body).Decode(&m); err != nil {
-			http.Error(res, "bad json", http.StatusBadRequest)
+			http.Error(res, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 			return
 		}
 
 		if m.ID == "" {
-			http.Error(res, "missing metric's name", http.StatusNotFound)
+			http.Error(res, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 			return
 		}
 
 		err := h.service.UpdateMetricJSON(m)
 		if err != nil {
-			http.Error(res, "invalid type, metric value or name", http.StatusBadRequest)
+			http.Error(res, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 			return
 		}
 
@@ -137,14 +144,23 @@ func (h *Handler) GetMetricHandler() http.HandlerFunc {
 		if err != nil {
 			switch err {
 
-			case errors.ErrMetricNotFound:
-				http.Error(res, "Metric not found", http.StatusNotFound)
-
-			case errors.ErrInvalidType:
-				http.Error(res, "Bad metric's type", http.StatusBadRequest)
-
+			case service.ErrMetricNotFound:
+				http.Error(res,
+					http.StatusText(http.StatusNotFound),
+					http.StatusNotFound,
+				)
+			case service.ErrInvalidType:
+				http.Error(res,
+					http.StatusText(http.StatusBadRequest),
+					http.StatusBadRequest,
+				)
 			default:
-				http.Error(res, "Server error", http.StatusInternalServerError)
+				h.logger.Error("internal server error", "error", err)
+
+				http.Error(res,
+					http.StatusText(http.StatusInternalServerError),
+					http.StatusInternalServerError,
+				)
 			}
 
 			return
@@ -160,32 +176,42 @@ func (h *Handler) GetMetricHandlerJSON() http.HandlerFunc {
 		res.Header().Set("Content-Type", "application/json")
 
 		if req.Header.Get("Content-Type") != "application/json" {
-			http.Error(res, "invalid content type", http.StatusBadRequest)
+			http.Error(res, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 			return
 		}
 
 		var m models.Metric
 		if err := json.NewDecoder(req.Body).Decode(&m); err != nil {
-			http.Error(res, "bad json", http.StatusBadRequest)
+			http.Error(res, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 			return
 		}
 
 		if m.ID == "" {
-			http.Error(res, "missing metric's name", http.StatusNotFound)
+			http.Error(res, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 			return
 		}
 
 		resp, err := h.service.GetMetricJSON(m.MType, strings.ToLower(m.ID))
 		if err != nil {
 			switch err {
-			case errors.ErrMetricNotFound:
-				http.Error(res, "Metric not found", http.StatusNotFound)
 
-			case errors.ErrInvalidType:
-				http.Error(res, "Bad metric's type", http.StatusBadRequest)
-
+			case service.ErrMetricNotFound:
+				http.Error(res,
+					http.StatusText(http.StatusNotFound),
+					http.StatusNotFound,
+				)
+			case service.ErrInvalidType:
+				http.Error(res,
+					http.StatusText(http.StatusBadRequest),
+					http.StatusBadRequest,
+				)
 			default:
-				http.Error(res, "Server error", http.StatusInternalServerError)
+				h.logger.Error("internal server error", "error", err)
+
+				http.Error(res,
+					http.StatusText(http.StatusInternalServerError),
+					http.StatusInternalServerError,
+				)
 			}
 
 			return

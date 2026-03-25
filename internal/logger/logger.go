@@ -1,89 +1,30 @@
 package logger
 
 import (
-	"net/http"
-	"time"
-
-	"go.uber.org/zap"
+	"log/slog"
+	"os"
 )
 
-type (
-	// структура для хранения логгера
-	Logger struct {
-		log *zap.Logger
-	}
-
-	// структура для хранения сведений об ответе
-	responseData struct {
-		status int
-		size   int
-	}
-
-	// добавляем реализацию http.ResponseWriter
-	loggingResponseWriter struct {
-		http.ResponseWriter // встраиваем оригинальный http.ResponseWriter
-		responseData        *responseData
-	}
-)
+// структура для хранения логгера
+type Logger struct {
+	log *slog.Logger
+}
 
 func NewLogger() *Logger {
 	// создаём логер
-	zl, err := zap.NewProduction()
-	if err != nil {
-		panic(err)
-	}
+	handler := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slog.LevelInfo,
+	})
 
 	return &Logger{
-		log: zl,
+		log: slog.New(handler),
 	}
 }
 
-// middleware для регистрации сведений о запросе
-func (l Logger) RequestLogger(h http.Handler) http.Handler {
-	logFn := func(w http.ResponseWriter, r *http.Request) {
-		// функция Now() возвращает текущее время
-		start := time.Now()
-
-		responseData := &responseData{
-			status: 0,
-			size:   0,
-		}
-		lw := loggingResponseWriter{
-			ResponseWriter: w, // встраиваем оригинальный http.ResponseWriter
-			responseData:   responseData,
-		}
-
-		// точка, где выполняется хендлер
-		h.ServeHTTP(&lw, r) // обслуживание оригинального запроса
-
-		// Since возвращает разницу во времени между start
-		// и моментом вызова Since. Таким образом можно посчитать
-		// время выполнения запроса.
-		duration := time.Since(start)
-
-		// отправляем сведения о запросе в zap
-		l.log.Info(
-			"request",
-			zap.String("uri", r.RequestURI),
-			zap.String("method", r.Method),
-			zap.Int("status", responseData.status),
-			zap.Duration("duration", duration),
-			zap.Int("size", responseData.size),
-		)
-	}
-	// возвращаем функционально расширенный хендлер
-	return http.HandlerFunc(logFn)
+func (l *Logger) Info(msg string, args ...any) {
+	l.log.Info(msg, args...)
 }
 
-func (r *loggingResponseWriter) Write(b []byte) (int, error) {
-	// записываем ответ, используя оригинальный http.ResponseWriter
-	size, err := r.ResponseWriter.Write(b)
-	r.responseData.size += size // захватываем размер
-	return size, err
-}
-
-func (r *loggingResponseWriter) WriteHeader(statusCode int) {
-	// записываем код статуса, используя оригинальный http.ResponseWriter
-	r.ResponseWriter.WriteHeader(statusCode)
-	r.responseData.status = statusCode // захватываем код статуса
+func (l *Logger) Error(msg string, args ...any) {
+	l.log.Error(msg, args...)
 }
