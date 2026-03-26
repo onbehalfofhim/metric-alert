@@ -9,10 +9,11 @@ import (
 )
 
 type ServerConfig struct {
-	RunAddr       string        `env:"ADDRESS"`
-	StoreInterval time.Duration `env:"STORE_INTERVAL"`
-	FilePath      string        `env:"FILE_STORAGE_PATH"`
-	Restore       bool          `env:"RESTORE"`
+	RunAddr          string        `env:"ADDRESS"`
+	StoreInterval    time.Duration `env:"-"`
+	StoreIntervalRaw int           `env:"STORE_INTERVAL"`
+	FilePath         string        `env:"FILE_STORAGE_PATH"`
+	Restore          bool          `env:"RESTORE"`
 }
 
 // обработка аргументов командной строки
@@ -26,22 +27,22 @@ func ParseServerFlags() (ServerConfig, error) {
 	flag.StringVar(&cfg.FilePath, "f", "./metrics.txt", "file path to write metrics")
 	flag.BoolVar(&cfg.Restore, "r", true, "load metrics from storage")
 
-	var storeInterval int
-	flag.IntVar(&storeInterval, "i", 300, "store interval in seconds")
+	flag.IntVar(&cfg.StoreIntervalRaw, "i", 300, "store interval in seconds")
 
 	// парсим переданные серверу аргументы командной строки в зарегистрированные переменные
 	flag.Parse()
 
-	if storeInterval <= 0 {
-		return cfg, fmt.Errorf("invalid store interval: %d (must be > 0)", storeInterval)
+	if cfg.StoreIntervalRaw <= 0 {
+		return cfg, fmt.Errorf("invalid store interval: %d (must be > 0)", cfg.StoreIntervalRaw)
 	}
-	cfg.StoreInterval = time.Duration(storeInterval) * time.Second
 
 	// парсим переменные окружения
 	err := env.Parse(&cfg)
 	if err != nil {
 		return cfg, fmt.Errorf("can't parse environment variables: %w", err)
 	}
+
+	cfg.StoreInterval = time.Duration(cfg.StoreIntervalRaw) * time.Second
 
 	return cfg, nil
 }
