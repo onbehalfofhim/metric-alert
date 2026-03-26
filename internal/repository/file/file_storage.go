@@ -20,7 +20,7 @@ type FileStorage struct {
 }
 
 func NewFileStorage(storage repository.Storage, filePath string, logger *logger.Logger) (*FileStorage, error) {
-	file, err := os.OpenFile(filePath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0666)
+	file, err := os.OpenFile(filePath, os.O_RDWR|os.O_CREATE, 0666)
 	if err != nil {
 		return nil, err
 	}
@@ -76,10 +76,16 @@ func (fs *FileStorage) LoadFromFile() error {
 		switch m.MType {
 		case "gauge":
 			name := strings.ToLower(m.ID)
-			return fs.storage.UpdateGauge(name, *m.Value)
+			err := fs.storage.UpdateGauge(name, *m.Value)
+			if err != nil {
+				return err
+			}
 		case "counter":
 			name := strings.ToLower(m.ID)
-			return fs.storage.UpdateCounter(name, *m.Delta)
+			err := fs.storage.UpdateCounter(name, *m.Delta)
+			if err != nil {
+				return err
+			}
 		}
 	}
 	return nil
