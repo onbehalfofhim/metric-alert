@@ -53,7 +53,6 @@ func (s *Sender) SendJSON(metrics []models.Metric) error {
 	for _, v := range metrics {
 		uri := fmt.Sprintf("%s/update", s.URL)
 
-		buf.Reset()
 		gz := gzip.NewWriter(buf)
 
 		if err := json.NewEncoder(gz).Encode(v); err != nil {
@@ -68,6 +67,7 @@ func (s *Sender) SendJSON(metrics []models.Metric) error {
 		if err != nil {
 			return fmt.Errorf("can't create request: %w", err)
 		}
+
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("Content-Encoding", "gzip")
 		req.Header.Set("Accept-Encoding", "gzip")
@@ -80,7 +80,7 @@ func (s *Sender) SendJSON(metrics []models.Metric) error {
 		if resp.StatusCode == http.StatusNotFound || resp.StatusCode == http.StatusBadRequest {
 			return fmt.Errorf("bad request: %d", resp.StatusCode)
 		}
-
+		buf.Reset()
 	}
 
 	return nil
