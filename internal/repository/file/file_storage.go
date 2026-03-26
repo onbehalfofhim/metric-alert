@@ -1,7 +1,6 @@
 package file
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"io"
@@ -107,21 +106,16 @@ func (fs *FileStorage) SaveToFile() error {
 	return fs.save(metrics)
 }
 
-func (fs *FileStorage) RunBackup(ctx context.Context, interval time.Duration) {
+func (fs *FileStorage) RunBackup(interval time.Duration) {
 	ticker := time.NewTicker(interval)
-	defer ticker.Stop()
 
-	for {
-		select {
-		case <-ticker.C:
+	go func() {
+		for range ticker.C {
 			if err := fs.SaveToFile(); err != nil {
 				fs.logger.Error("failed to save metrics", "error", err)
 			}
-		case <-ctx.Done():
-			fs.logger.Info("backup stopped")
-			return
 		}
-	}
+	}()
 }
 
 func (fs *FileStorage) Close() error {

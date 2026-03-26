@@ -1,12 +1,8 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"net/http"
-	"os"
-	"os/signal"
-	"syscall"
 
 	"github.com/onbehalfofhim/metric-alert/internal/config"
 	"github.com/onbehalfofhim/metric-alert/internal/handler"
@@ -24,15 +20,12 @@ func main() {
 		logger.Error("Error in parse flags and variables", "error", error)
 	}
 
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
-
-	if err := run(cfg, logger, ctx); err != nil {
+	if err := run(cfg, logger); err != nil {
 		logger.Error("Error in run server", "error", err)
 	}
 }
 
-func run(cfg config.ServerConfig, logger *logger.Logger, ctx context.Context) error {
+func run(cfg config.ServerConfig, logger *logger.Logger) error {
 	memStorage := inmemory.NewMemStorage()
 
 	storage, err := file.NewFileStorage(memStorage, cfg.FilePath, logger)
@@ -44,7 +37,7 @@ func run(cfg config.ServerConfig, logger *logger.Logger, ctx context.Context) er
 	service := service.NewMetricService(memStorage)
 	handler := handler.New(service, logger)
 
-	go storage.RunBackup(ctx, cfg.StoreInterval)
+	storage.RunBackup(cfg.StoreInterval)
 
 	if cfg.Restore {
 		err := storage.LoadFromFile()
