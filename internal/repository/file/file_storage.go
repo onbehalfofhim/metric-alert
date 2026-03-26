@@ -124,6 +124,6 @@ func (fs *FileStorage) RunBackup(ctx context.Context, interval time.Duration) {
 	}
 }
 
-func (f *FileStorage) Close() error {
-	return f.file.Close()
+func (fs *FileStorage) Close() error {
+	return fs.file.Close()
 }
