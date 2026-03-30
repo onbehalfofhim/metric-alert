@@ -65,14 +65,14 @@ func (s *MetricsService) GetMetric(mType, name string) (string, error) {
 	case "gauge":
 		v, err := s.storage.GetGauge(name)
 		if err != nil {
-			return "", ErrMetricNotFound
+			return "", err
 		}
 		return strconv.FormatFloat(v, 'f', -1, 64), nil
 
 	case "counter":
 		v, err := s.storage.GetCounter(name)
 		if err != nil {
-			return "", ErrMetricNotFound
+			return "", err
 		}
 		return strconv.FormatInt(v, 10), nil
 	}

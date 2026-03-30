@@ -10,6 +10,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/onbehalfofhim/metric-alert/internal/logger"
 	"github.com/onbehalfofhim/metric-alert/internal/models"
+	"github.com/onbehalfofhim/metric-alert/internal/repository"
 	"github.com/onbehalfofhim/metric-alert/internal/service"
 	"github.com/onbehalfofhim/metric-alert/internal/templates"
 )
@@ -74,7 +75,7 @@ func (h *Handler) RootHandler() http.HandlerFunc {
 
 		err := templates.RenderMetricsPage(res, data)
 		if err != nil {
-			h.logger.Error("internal server error", "error", err)
+			h.logger.Error("failed to render the metrics page", "error", err)
 
 			http.Error(res,
 				http.StatusText(http.StatusInternalServerError),
@@ -144,7 +145,7 @@ func (h *Handler) GetMetricHandler() http.HandlerFunc {
 		if err != nil {
 			switch err {
 
-			case service.ErrMetricNotFound:
+			case repository.ErrMetricNotFound:
 				http.Error(res,
 					http.StatusText(http.StatusNotFound),
 					http.StatusNotFound,
@@ -155,7 +156,7 @@ func (h *Handler) GetMetricHandler() http.HandlerFunc {
 					http.StatusBadRequest,
 				)
 			default:
-				h.logger.Error("internal server error", "error", err)
+				h.logger.Error("failed to get metric from server", "error", err)
 
 				http.Error(res,
 					http.StatusText(http.StatusInternalServerError),
@@ -195,7 +196,7 @@ func (h *Handler) GetMetricHandlerJSON() http.HandlerFunc {
 		if err != nil {
 			switch err {
 
-			case service.ErrMetricNotFound:
+			case repository.ErrMetricNotFound:
 				http.Error(res,
 					http.StatusText(http.StatusNotFound),
 					http.StatusNotFound,
@@ -206,7 +207,7 @@ func (h *Handler) GetMetricHandlerJSON() http.HandlerFunc {
 					http.StatusBadRequest,
 				)
 			default:
-				h.logger.Error("internal server error", "error", err)
+				h.logger.Error("failed to get metric from server", "error", err)
 
 				http.Error(res,
 					http.StatusText(http.StatusInternalServerError),
