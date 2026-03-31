@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"strconv"
 	"strings"
 
@@ -107,4 +108,8 @@ func (s *MetricsService) GetListGauges() map[string]float64 {
 
 func (s *MetricsService) GetListCounters() map[string]int64 {
 	return s.storage.GetListCounters()
+}
+
+func (s *MetricsService) Ping(ctx context.Context) error {
+	return s.storage.Ping(ctx)
 }

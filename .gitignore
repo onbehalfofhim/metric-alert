@@ -24,6 +24,5 @@ vendor/
 .idea
 .vscode
 
-
-# Metrics file
-*.txt
+# Backup file
+cmd/server/metrics.txt
