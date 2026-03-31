@@ -1,15 +1,10 @@
-package models
+package inmemory
 
 import (
-	"strings"
 	"sync"
-)
 
-// Интерфейс для взаимодействия с хранилищем метрик
-type Storage interface {
-	UpdateGauge(name string, value float64)
-	UpdateCounter(name string, value int64)
-}
+	"github.com/onbehalfofhim/metric-alert/internal/repository"
+)
 
 // Структура для хранения метрик
 type MemStorage struct {
@@ -27,56 +22,51 @@ func NewMemStorage() *MemStorage {
 }
 
 // Метод обновления метрики с типом gauge
-func (s *MemStorage) UpdateGauge(name string, value float64) {
+func (s *MemStorage) UpdateGauge(name string, value float64) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	s.gauges[name] = value
+
+	return nil
 }
 
 // Метод обновления метрики с типом counter
-func (s *MemStorage) UpdateCounter(name string, value int64) {
+func (s *MemStorage) UpdateCounter(name string, value int64) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	s.counters[name] += value
+
+	return nil
 }
 
 // Метод получения метрики с типом gauge
-func (s *MemStorage) GetGauge(name string) (float64, bool) {
+func (s *MemStorage) GetGauge(name string) (float64, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	var value float64
-	var ok bool
-
-	for k := range s.gauges {
-		gName := strings.ToLower(k)
-		if gName == name {
-			value, ok = s.gauges[k]
-		}
+	v, ok := s.gauges[name]
+	if !ok {
+		return 0, repository.ErrMetricNotFound
 	}
-	return value, ok
+
+	return v, nil
 }
 
 // Метод получения метрики с типом counter
-func (s *MemStorage) GetCounter(name string) (int64, bool) {
+func (s *MemStorage) GetCounter(name string) (int64, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	var value int64
-	var ok bool
-
-	for k := range s.counters {
-		cName := strings.ToLower(k)
-		if cName == name {
-			value, ok = s.counters[k]
-		}
+	v, ok := s.counters[name]
+	if !ok {
+		return 0, repository.ErrMetricNotFound
 	}
-	return value, ok
+	return v, nil
 }
 
-func (s *MemStorage) GetListGauge() map[string]float64 {
+func (s *MemStorage) GetListGauges() map[string]float64 {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -89,7 +79,7 @@ func (s *MemStorage) GetListGauge() map[string]float64 {
 	return result
 }
 
-func (s *MemStorage) GetListCounter() map[string]int64 {
+func (s *MemStorage) GetListCounters() map[string]int64 {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 

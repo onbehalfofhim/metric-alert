@@ -1,15 +1,31 @@
 package handler
 
 import (
+	"encoding/json"
 	"net/http"
 	"sort"
 	"strconv"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/onbehalfofhim/metric-alert/internal/logger"
 	"github.com/onbehalfofhim/metric-alert/internal/models"
+	"github.com/onbehalfofhim/metric-alert/internal/repository"
+	"github.com/onbehalfofhim/metric-alert/internal/service"
 	"github.com/onbehalfofhim/metric-alert/internal/templates"
 )
+
+type Handler struct {
+	service *service.MetricsService
+	logger  *logger.Logger
+}
+
+func New(service *service.MetricsService, logger *logger.Logger) *Handler {
+	return &Handler{
+		service: service,
+		logger:  logger,
+	}
+}
 
 func mapToMetricView[T any](m map[string]T, format func(T) string) []templates.MetricView {
 	keys := make([]string, 0, len(m))
@@ -31,11 +47,11 @@ func mapToMetricView[T any](m map[string]T, format func(T) string) []templates.M
 }
 
 // Обработчик корневого запроса
-func RootHandler(storage *models.MemStorage) http.HandlerFunc {
+func (h *Handler) RootHandler() http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		//форматируем метрики типа gauge
 		gauges := mapToMetricView(
-			storage.GetListGauge(),
+			h.service.GetListGauges(),
 			func(v float64) string {
 				return strconv.FormatFloat(v, 'f', -1, 64)
 			},
@@ -43,7 +59,7 @@ func RootHandler(storage *models.MemStorage) http.HandlerFunc {
 
 		//форматируем метрики типа counter
 		counters := mapToMetricView(
-			storage.GetListCounter(),
+			h.service.GetListCounters(),
 			func(v int64) string {
 				return strconv.FormatInt(v, 10)
 			},
@@ -59,45 +75,59 @@ func RootHandler(storage *models.MemStorage) http.HandlerFunc {
 
 		err := templates.RenderMetricsPage(res, data)
 		if err != nil {
-			http.Error(res, err.Error(), http.StatusInternalServerError)
+			h.logger.Error("failed to render the metrics page", "error", err)
+
+			http.Error(res,
+				http.StatusText(http.StatusInternalServerError),
+				http.StatusInternalServerError,
+			)
 		}
 	}
 }
 
 // Обрабтчик запроса на обнолвение метрик
-func UpdateHandler(storage *models.MemStorage) http.HandlerFunc {
+func (h *Handler) UpdateHandler() http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		// Проверка на заполненность имени метрики
 		metricType := chi.URLParam(req, "type")
 		metricName := chi.URLParam(req, "name")
 		metricValue := chi.URLParam(req, "value")
 		if metricName == "" {
-			http.Error(res, "Missing metric's name", http.StatusNotFound)
+			http.Error(res, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 			return
 		}
 
-		// Проверка типа метрики
-		switch metricType {
-		case "gauge":
-			// Проверка на корректность значения
-			value, err := strconv.ParseFloat(metricValue, 64)
-			if err != nil {
-				http.Error(res, "Invalid gauge value", http.StatusBadRequest)
-				return
-			}
-			// Обновление метрики
-			storage.UpdateGauge(metricName, value)
-		case "counter":
-			// Проверка на корректность значения
-			value, err := strconv.ParseInt(metricValue, 10, 64)
-			if err != nil {
-				http.Error(res, "Invalid counter value", http.StatusBadRequest)
-				return
-			}
-			// Обновление метрики
-			storage.UpdateCounter(metricName, value)
-		default:
-			http.Error(res, "Bad metric's type", http.StatusBadRequest)
+		err := h.service.UpdateMetric(metricType, metricName, metricValue)
+		if err != nil {
+			http.Error(res, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+			return
+		}
+
+		res.WriteHeader(http.StatusOK)
+	}
+}
+
+func (h *Handler) UpdateHandlerJSON() http.HandlerFunc {
+	return func(res http.ResponseWriter, req *http.Request) {
+		if req.Header.Get("Content-Type") != "application/json" {
+			http.Error(res, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+			return
+		}
+
+		var m models.Metric
+		if err := json.NewDecoder(req.Body).Decode(&m); err != nil {
+			http.Error(res, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+			return
+		}
+
+		if m.ID == "" {
+			http.Error(res, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+			return
+		}
+
+		err := h.service.UpdateMetricJSON(m)
+		if err != nil {
+			http.Error(res, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 			return
 		}
 
@@ -106,34 +136,93 @@ func UpdateHandler(storage *models.MemStorage) http.HandlerFunc {
 }
 
 // Обработчик запроса на выдачу значения конкретной метрики
-func GetMetricHandler(storage *models.MemStorage) http.HandlerFunc {
+func (h *Handler) GetMetricHandler() http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		metricType := chi.URLParam(req, "type")
 		metricName := strings.ToLower(chi.URLParam(req, "name"))
 
-		switch metricType {
-		case "gauge":
-			// Проверка на корректность значения
-			value, ok := storage.GetGauge(metricName)
-			if !ok {
-				http.Error(res, "Metric not found", http.StatusNotFound)
-				return
+		value, err := h.service.GetMetric(metricType, metricName)
+		if err != nil {
+			switch err {
+
+			case repository.ErrMetricNotFound:
+				http.Error(res,
+					http.StatusText(http.StatusNotFound),
+					http.StatusNotFound,
+				)
+			case service.ErrInvalidType:
+				http.Error(res,
+					http.StatusText(http.StatusBadRequest),
+					http.StatusBadRequest,
+				)
+			default:
+				h.logger.Error("failed to get metric from server", "error", err)
+
+				http.Error(res,
+					http.StatusText(http.StatusInternalServerError),
+					http.StatusInternalServerError,
+				)
 			}
-			res.WriteHeader(http.StatusOK)
-			res.Write([]byte(strconv.FormatFloat(value, 'f', -1, 64)))
-		case "counter":
-			// Проверка на корректность значения
-			value, ok := storage.GetCounter(metricName)
-			if !ok {
-				http.Error(res, "Metric not found", http.StatusNotFound)
-				return
-			}
-			res.WriteHeader(http.StatusOK)
-			res.Write([]byte(strconv.FormatInt(value, 10)))
-		default:
-			http.Error(res, "Bad metric's type", http.StatusBadRequest)
+
+			return
+		}
+		res.WriteHeader(http.StatusOK)
+		res.Write([]byte(value))
+
+	}
+}
+
+func (h *Handler) GetMetricHandlerJSON() http.HandlerFunc {
+	return func(res http.ResponseWriter, req *http.Request) {
+		res.Header().Set("Content-Type", "application/json")
+
+		if req.Header.Get("Content-Type") != "application/json" {
+			http.Error(res, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 			return
 		}
 
+		var m models.Metric
+		if err := json.NewDecoder(req.Body).Decode(&m); err != nil {
+			http.Error(res, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+			return
+		}
+
+		if m.ID == "" {
+			http.Error(res, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+			return
+		}
+
+		resp, err := h.service.GetMetricJSON(m.MType, strings.ToLower(m.ID))
+		if err != nil {
+			switch err {
+
+			case repository.ErrMetricNotFound:
+				http.Error(res,
+					http.StatusText(http.StatusNotFound),
+					http.StatusNotFound,
+				)
+			case service.ErrInvalidType:
+				http.Error(res,
+					http.StatusText(http.StatusBadRequest),
+					http.StatusBadRequest,
+				)
+			default:
+				h.logger.Error("failed to get metric from server", "error", err)
+
+				http.Error(res,
+					http.StatusText(http.StatusInternalServerError),
+					http.StatusInternalServerError,
+				)
+			}
+
+			return
+		}
+
+		enc := json.NewEncoder(res)
+		if err := enc.Encode(resp); err != nil {
+			http.Error(res, "cannot encode response body", http.StatusInternalServerError)
+		}
+
+		res.WriteHeader(http.StatusOK)
 	}
 }

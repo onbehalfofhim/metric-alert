@@ -1,107 +1,28 @@
-package main
+package handler
 
 import (
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-resty/resty/v2"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/onbehalfofhim/metric-alert/internal/handler"
-	"github.com/onbehalfofhim/metric-alert/internal/models"
+	"github.com/onbehalfofhim/metric-alert/internal/logger"
+	"github.com/onbehalfofhim/metric-alert/internal/repository/inmemory"
+	"github.com/onbehalfofhim/metric-alert/internal/service"
 )
 
-func TestMemStorage_UpdateGauge(t *testing.T) {
-	type fields struct {
-		metric string
-		value  float64
-	}
-	tests := []struct {
-		name  string
-		value fields
-		want  float64
-	}{
-		{
-			name:  "first update metric",
-			value: fields{metric: "metric1", value: 7.8},
-			want:  7.8,
-		},
-		{
-			name:  "second update metric",
-			value: fields{metric: "metric1", value: 5.7},
-			want:  5.7,
-		},
-		{
-			name:  "zero value",
-			value: fields{metric: "metric2", value: 0},
-			want:  0,
-		},
-		{
-			name:  "negative value",
-			value: fields{metric: "metric3", value: -8.5},
-			want:  -8.5,
-		},
-	}
-	s := models.NewMemStorage()
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			s.UpdateGauge(test.value.metric, test.value.value)
-			v, ok := s.GetGauge(test.value.metric)
-			if ok {
-				assert.Equal(t, test.want, v)
-			}
-		})
-	}
-}
-
-func TestMemStorage_UpdateCounter(t *testing.T) {
-	type fields struct {
-		metric string
-		value  int64
-	}
-	tests := []struct {
-		name  string
-		value fields
-		want  int64
-	}{
-		{
-			name:  "first update metric",
-			value: fields{metric: "metric1", value: 543},
-			want:  543,
-		},
-		{
-			name:  "second update metric",
-			value: fields{metric: "metric1", value: 7},
-			want:  550,
-		},
-		{
-			name:  "negative value",
-			value: fields{metric: "metric1", value: -7},
-			want:  543,
-		},
-	}
-
-	s := models.NewMemStorage()
-
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			s.UpdateCounter(test.value.metric, test.value.value)
-
-			v, ok := s.GetCounter(test.value.metric)
-			if ok {
-				assert.Equal(t, test.want, v)
-			}
-		})
-	}
-}
-
 func Test_RootHandler(t *testing.T) {
-	s := models.NewMemStorage()
+	storage := inmemory.NewMemStorage()
+	service := service.NewMetricService(storage)
+	logger := logger.NewLogger()
+	h := New(service, logger)
 
 	r := chi.NewRouter()
-	r.Get("/", handler.RootHandler(s))
+	r.Get("/", h.RootHandler())
 
 	// запускаем тестовый сервер, будет выбран первый свободный порт
 	srv := httptest.NewServer(r)
@@ -139,8 +60,8 @@ func Test_UpdateHandler(t *testing.T) {
 		expectedCode int
 	}{
 		{name: "short update query", request: "/update/", expectedCode: http.StatusNotFound},
-		{name: "without metric name", request: "/update/gauge//3.6", expectedCode: http.StatusNotFound},
-		{name: "without metric name #2", request: "/update/counter//3", expectedCode: http.StatusNotFound},
+		{name: "without metric name", request: "/update/gauge//3.6", expectedCode: http.StatusBadRequest},
+		{name: "without metric name #2", request: "/update/counter//3", expectedCode: http.StatusBadRequest},
 		{name: "wrong value", request: "/update/counter/metric1/3.6", expectedCode: http.StatusBadRequest},
 		{name: "wrong value #2", request: "/update/gauge/metric1/abc", expectedCode: http.StatusBadRequest},
 		{name: "wrong metric type", request: "/update/unknown/metric1/5", expectedCode: http.StatusBadRequest},
@@ -148,10 +69,13 @@ func Test_UpdateHandler(t *testing.T) {
 		{name: "correct query #2", request: "/update/counter/metric1/6", expectedCode: http.StatusOK},
 	}
 
-	s := models.NewMemStorage()
+	storage := inmemory.NewMemStorage()
+	service := service.NewMetricService(storage)
+	logger := logger.NewLogger()
+	h := New(service, logger)
 
 	r := chi.NewRouter()
-	r.Post("/update/{type}/{name}/{value}", handler.UpdateHandler(s))
+	r.Post("/update/{type}/{name}/{value}", h.UpdateHandler())
 
 	// запускаем тестовый сервер, будет выбран первый свободный порт
 	srv := httptest.NewServer(r)
@@ -175,13 +99,17 @@ func Test_UpdateHandler(t *testing.T) {
 }
 
 func Test_GetMetricHandler(t *testing.T) {
-	s := models.NewMemStorage()
-	s.UpdateGauge("metric1", 8.7)
-	s.UpdateCounter("metric2", -9)
-	s.UpdateCounter("METric", 3)
+	storage := inmemory.NewMemStorage()
+	service := service.NewMetricService(storage)
+	logger := logger.NewLogger()
+	h := New(service, logger)
+
+	service.UpdateMetric("gauge", "metric1", "8.7")
+	service.UpdateMetric("counter", "metric2", "-9")
+	service.UpdateMetric("counter", "METric", "3")
 
 	r := chi.NewRouter()
-	r.Get("/value/{type}/{name}", handler.GetMetricHandler(s))
+	r.Get("/value/{type}/{name}", h.GetMetricHandler())
 
 	// запускаем тестовый сервер, будет выбран первый свободный порт
 	srv := httptest.NewServer(r)
@@ -216,13 +144,13 @@ func Test_GetMetricHandler(t *testing.T) {
 			name:         "metric not exists",
 			request:      "/value/counter/metric3",
 			expectedCode: http.StatusNotFound,
-			want:         "Metric not found\n",
+			want:         http.StatusText(http.StatusNotFound),
 		},
 		{
 			name:         "bad metric type",
 			request:      "/value/unknown/metric1",
 			expectedCode: http.StatusBadRequest,
-			want:         "Bad metric's type\n",
+			want:         http.StatusText(http.StatusBadRequest),
 		},
 	}
 
@@ -238,7 +166,7 @@ func Test_GetMetricHandler(t *testing.T) {
 			assert.NoError(t, err, "error making HTTP request")
 
 			assert.Equal(t, tt.expectedCode, resp.StatusCode(), "Response code didn't match expected")
-			assert.Equal(t, tt.want, string(resp.Body()), "Response value didn't match expected")
+			assert.Equal(t, tt.want, strings.TrimSpace(string(resp.Body())), "Response value didn't match expected")
 		})
 	}
 

@@ -1,7 +1,5 @@
 package models
 
-import "fmt"
-
 const (
 	Counter = "counter"
 	Gauge   = "gauge"
@@ -32,19 +30,4 @@ func NewCounter(id string, d int64) Metric {
 		MType: Counter,
 		Delta: &d,
 	}
-}
-
-// переопределение метода для проверки и отладки метрик
-func (m Metric) String() string {
-	switch m.MType {
-	case "gauge":
-		if m.Value != nil {
-			return fmt.Sprintf("%s = %f", m.ID, *m.Value)
-		}
-	case "counter":
-		if m.Delta != nil {
-			return fmt.Sprintf("%s = %d", m.ID, *m.Delta)
-		}
-	}
-	return fmt.Sprintf("%s = <nil>", m.ID)
 }
