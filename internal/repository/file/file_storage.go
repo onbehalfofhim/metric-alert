@@ -1,6 +1,7 @@
 package file
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"io"
@@ -126,4 +127,8 @@ func (fs *FileStorage) RunBackup(interval time.Duration) {
 
 func (fs *FileStorage) Close() error {
 	return fs.file.Close()
+}
+
+func (fs *FileStorage) Ping(ctx context.Context) error {
+	return nil
 }

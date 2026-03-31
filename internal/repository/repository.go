@@ -1,6 +1,9 @@
 package repository
 
-import "errors"
+import (
+	"context"
+	"errors"
+)
 
 // Интерфейс для взаимодействия с хранилищем метрик
 type Storage interface {
@@ -12,6 +15,8 @@ type Storage interface {
 
 	GetListGauges() map[string]float64
 	GetListCounters() map[string]int64
+
+	Ping(ctx context.Context) error
 }
 
 var (

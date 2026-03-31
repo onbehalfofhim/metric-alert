@@ -1,11 +1,13 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/onbehalfofhim/metric-alert/internal/logger"
@@ -223,6 +225,26 @@ func (h *Handler) GetMetricHandlerJSON() http.HandlerFunc {
 			http.Error(res, "cannot encode response body", http.StatusInternalServerError)
 		}
 
+		res.WriteHeader(http.StatusOK)
+	}
+}
+
+func (h *Handler) PingHandler() http.HandlerFunc {
+	return func(res http.ResponseWriter, req *http.Request) {
+		ctx, cancel := context.WithTimeout(req.Context(), 1*time.Second)
+		defer cancel()
+
+		if err := h.service.Ping(ctx); err != nil {
+			h.logger.Error("failed to connect to data base", "error", err)
+
+			http.Error(res,
+				http.StatusText(http.StatusInternalServerError),
+				http.StatusInternalServerError,
+			)
+			return
+		}
+
+		res.Header().Set("Content-Type", "text/html; charset=utf-8")
 		res.WriteHeader(http.StatusOK)
 	}
 }

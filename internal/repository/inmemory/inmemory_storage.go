@@ -1,6 +1,7 @@
 package inmemory
 
 import (
+	"context"
 	"sync"
 
 	"github.com/onbehalfofhim/metric-alert/internal/repository"
@@ -90,4 +91,8 @@ func (s *MemStorage) GetListCounters() map[string]int64 {
 	}
 
 	return result
+}
+
+func (s *MemStorage) Ping(ctx context.Context) error {
+	return nil
 }
