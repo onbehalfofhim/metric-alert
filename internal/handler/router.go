@@ -22,6 +22,9 @@ func (h *Handler) Route(log *logger.Logger) http.Handler {
 		r.Post("/", h.GetMetricHandlerJSON())
 		r.Get("/{type}/{name}", h.GetMetricHandler())
 	})
+	r.Route("/ping", func(r chi.Router) {
+		r.Get("/", h.PingHandler())
+	})
 
 	return r
 }

@@ -1,11 +1,11 @@
 package file
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"io"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/onbehalfofhim/metric-alert/internal/logger"
@@ -75,14 +75,12 @@ func (fs *FileStorage) LoadFromFile() error {
 	for _, m := range metrics {
 		switch m.MType {
 		case "gauge":
-			name := strings.ToLower(m.ID)
-			err := fs.storage.UpdateGauge(name, *m.Value)
+			err := fs.storage.UpdateGauge(m.ID, *m.Value)
 			if err != nil {
 				return err
 			}
 		case "counter":
-			name := strings.ToLower(m.ID)
-			err := fs.storage.UpdateCounter(name, *m.Delta)
+			err := fs.storage.UpdateCounter(m.ID, *m.Delta)
 			if err != nil {
 				return err
 			}
@@ -126,4 +124,8 @@ func (fs *FileStorage) RunBackup(interval time.Duration) {
 
 func (fs *FileStorage) Close() error {
 	return fs.file.Close()
+}
+
+func (fs *FileStorage) Ping(ctx context.Context) error {
+	return nil
 }

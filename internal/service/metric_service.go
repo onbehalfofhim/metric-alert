@@ -1,8 +1,8 @@
 package service
 
 import (
+	"context"
 	"strconv"
-	"strings"
 
 	"github.com/onbehalfofhim/metric-alert/internal/models"
 	"github.com/onbehalfofhim/metric-alert/internal/repository"
@@ -25,7 +25,6 @@ func (s *MetricsService) UpdateMetric(mType, name, value string) error {
 		if err != nil {
 			return ErrInvalidValue
 		}
-		name = strings.ToLower(name)
 		return s.storage.UpdateGauge(name, v)
 
 	case "counter":
@@ -33,7 +32,6 @@ func (s *MetricsService) UpdateMetric(mType, name, value string) error {
 		if err != nil {
 			return ErrInvalidValue
 		}
-		name = strings.ToLower(name)
 		return s.storage.UpdateCounter(name, v)
 	}
 
@@ -46,14 +44,12 @@ func (s *MetricsService) UpdateMetricJSON(metric models.Metric) error {
 		if metric.Value == nil {
 			return ErrInvalidValue
 		}
-		name := strings.ToLower(metric.ID)
-		return s.storage.UpdateGauge(name, *metric.Value)
+		return s.storage.UpdateGauge(metric.ID, *metric.Value)
 	case "counter":
 		if metric.Delta == nil {
 			return ErrInvalidValue
 		}
-		name := strings.ToLower(metric.ID)
-		return s.storage.UpdateCounter(name, *metric.Delta)
+		return s.storage.UpdateCounter(metric.ID, *metric.Delta)
 	}
 
 	return ErrInvalidType
@@ -107,4 +103,8 @@ func (s *MetricsService) GetListGauges() map[string]float64 {
 
 func (s *MetricsService) GetListCounters() map[string]int64 {
 	return s.storage.GetListCounters()
+}
+
+func (s *MetricsService) Ping(ctx context.Context) error {
+	return s.storage.Ping(ctx)
 }
