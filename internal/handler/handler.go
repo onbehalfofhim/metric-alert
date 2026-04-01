@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"sort"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -98,7 +97,6 @@ func (h *Handler) UpdateHandler() http.HandlerFunc {
 			http.Error(res, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 			return
 		}
-
 		err := h.service.UpdateMetric(metricType, metricName, metricValue)
 		if err != nil {
 			http.Error(res, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
@@ -141,7 +139,7 @@ func (h *Handler) UpdateHandlerJSON() http.HandlerFunc {
 func (h *Handler) GetMetricHandler() http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		metricType := chi.URLParam(req, "type")
-		metricName := strings.ToLower(chi.URLParam(req, "name"))
+		metricName := chi.URLParam(req, "name")
 
 		value, err := h.service.GetMetric(metricType, metricName)
 		if err != nil {
@@ -194,7 +192,7 @@ func (h *Handler) GetMetricHandlerJSON() http.HandlerFunc {
 			return
 		}
 
-		resp, err := h.service.GetMetricJSON(m.MType, strings.ToLower(m.ID))
+		resp, err := h.service.GetMetricJSON(m.MType, m.ID)
 		if err != nil {
 			switch err {
 
