@@ -41,7 +41,7 @@ func run(cfg config.ServerConfig, logger *logger.Logger) error {
 		}
 		defer db.Close()
 
-		if err := migrations.ApplyMigrations(db, "file://./../../migrations"); err != nil {
+		if err := migrations.ApplyMigrations(db, "file://migrations"); err != nil {
 			logger.Error("Error apply migrations", "error", err)
 		}
 
