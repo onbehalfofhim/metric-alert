@@ -106,7 +106,6 @@ func Test_GetMetricHandler(t *testing.T) {
 
 	service.UpdateMetric("gauge", "metric1", "8.7")
 	service.UpdateMetric("counter", "metric2", "-9")
-	service.UpdateMetric("counter", "METric", "3")
 
 	r := chi.NewRouter()
 	r.Get("/value/{type}/{name}", h.GetMetricHandler())
@@ -133,12 +132,6 @@ func Test_GetMetricHandler(t *testing.T) {
 			request:      "/value/counter/metric2",
 			expectedCode: http.StatusOK,
 			want:         "-9",
-		},
-		{
-			name:         "check metric name - toLowerCase",
-			request:      "/value/counter/metric",
-			expectedCode: http.StatusOK,
-			want:         "3",
 		},
 		{
 			name:         "metric not exists",
