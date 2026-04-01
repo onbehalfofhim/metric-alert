@@ -15,6 +15,7 @@ import (
 	"github.com/onbehalfofhim/metric-alert/internal/repository/inmemory"
 	"github.com/onbehalfofhim/metric-alert/internal/repository/postgres"
 	"github.com/onbehalfofhim/metric-alert/internal/service"
+	"github.com/onbehalfofhim/metric-alert/migrations"
 )
 
 func main() {
@@ -38,6 +39,11 @@ func run(cfg config.ServerConfig, logger *logger.Logger) error {
 		if err != nil {
 			logger.Error("Error connect to data base", "error", err)
 		}
+		defer db.Close()
+
+		if err := migrations.ApplyMigrations(db, "file://./../../migrations"); err != nil {
+			logger.Error("Error apply migrations", "error", err)
+		}
 
 		storage = postgres.New(db)
 
@@ -60,8 +66,7 @@ func run(cfg config.ServerConfig, logger *logger.Logger) error {
 			}
 		}
 	}
-	fmt.Printf("%s\n", cfg.DatabaseDSN)
-	fmt.Printf("%T\n", storage)
+
 	service := service.NewMetricService(storage)
 	handler := handler.New(service, logger)
 
