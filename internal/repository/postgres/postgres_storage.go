@@ -63,7 +63,7 @@ func (p *PostgresStorage) GetListGauges() map[string]float64 {
 	for rows.Next() {
 		var k string
 		var v float64
-		_ = rows.Scan(&k, &v)
+		rows.Scan(&k, &v)
 		res[k] = v
 	}
 
@@ -118,7 +118,7 @@ func (p *PostgresStorage) GetListCounters() map[string]int64 {
 	for rows.Next() {
 		var k string
 		var v int64
-		_ = rows.Scan(&k, &v)
+		rows.Scan(&k, &v)
 		res[k] = v
 	}
 

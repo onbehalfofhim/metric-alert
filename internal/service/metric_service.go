@@ -26,7 +26,6 @@ func (s *MetricsService) UpdateMetric(mType, name, value string) error {
 			return ErrInvalidValue
 		}
 		return s.storage.UpdateGauge(name, v)
-
 	case "counter":
 		v, err := strconv.ParseInt(value, 10, 64)
 		if err != nil {
@@ -55,16 +54,28 @@ func (s *MetricsService) UpdateMetricJSON(metric models.Metric) error {
 	return ErrInvalidType
 }
 
+func (s *MetricsService) UpdateBatch(metrics []models.Metric) error {
+	for _, metric := range metrics {
+
+		if metric.ID == "" {
+			return ErrInvalidName
+		}
+		err := s.UpdateMetricJSON(metric)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (s *MetricsService) GetMetric(mType, name string) (string, error) {
 	switch mType {
-
 	case "gauge":
 		v, err := s.storage.GetGauge(name)
 		if err != nil {
 			return "", err
 		}
 		return strconv.FormatFloat(v, 'f', -1, 64), nil
-
 	case "counter":
 		v, err := s.storage.GetCounter(name)
 		if err != nil {
@@ -84,11 +95,9 @@ func (s *MetricsService) GetMetricJSON(mType, name string) (models.Metric, error
 	}
 
 	switch mType {
-
 	case "gauge":
 		v, _ := strconv.ParseFloat(value, 64)
 		return models.NewGauge(name, v), nil
-
 	case "counter":
 		v, _ := strconv.ParseInt(value, 10, 64)
 		return models.NewCounter(name, v), nil

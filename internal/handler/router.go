@@ -18,6 +18,9 @@ func (h *Handler) Route(log *logger.Logger) http.Handler {
 		r.Post("/", h.UpdateHandlerJSON())
 		r.Post("/{type}/{name}/{value}", h.UpdateHandler())
 	})
+	r.Route("/updates", func(r chi.Router) {
+		r.Post("/", h.UpdateBatchHandler())
+	})
 	r.Route("/value", func(r chi.Router) {
 		r.Post("/", h.GetMetricHandlerJSON())
 		r.Get("/{type}/{name}", h.GetMetricHandler())

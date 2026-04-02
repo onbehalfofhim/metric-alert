@@ -246,3 +246,26 @@ func (h *Handler) PingHandler() http.HandlerFunc {
 		res.WriteHeader(http.StatusOK)
 	}
 }
+
+func (h *Handler) UpdateBatchHandler() http.HandlerFunc {
+	return func(res http.ResponseWriter, req *http.Request) {
+		if req.Header.Get("Content-Type") != "application/json" {
+			http.Error(res, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+			return
+		}
+
+		var metrics []models.Metric
+		if err := json.NewDecoder(req.Body).Decode(&metrics); err != nil {
+			http.Error(res, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+			return
+		}
+
+		err := h.service.UpdateBatch(metrics)
+		if err != nil {
+			http.Error(res, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+			return
+		}
+
+		res.WriteHeader(http.StatusOK)
+	}
+}
