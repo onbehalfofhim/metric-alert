@@ -82,7 +82,7 @@ func (s *Sender) doRequest(body any, endpoint string) error {
 	return nil
 }
 
-func (s *Sender) SendJson(metrics []models.Metric) error {
+func (s *Sender) SendJSON(metrics []models.Metric) error {
 	for _, m := range metrics {
 		if err := s.doRequest(m, "/update/"); err != nil {
 			return err
