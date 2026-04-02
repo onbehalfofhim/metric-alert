@@ -1,8 +1,8 @@
 package service
 
 import (
+	"context"
 	"strconv"
-	"strings"
 
 	"github.com/onbehalfofhim/metric-alert/internal/models"
 	"github.com/onbehalfofhim/metric-alert/internal/repository"
@@ -25,15 +25,12 @@ func (s *MetricsService) UpdateMetric(mType, name, value string) error {
 		if err != nil {
 			return ErrInvalidValue
 		}
-		name = strings.ToLower(name)
 		return s.storage.UpdateGauge(name, v)
-
 	case "counter":
 		v, err := strconv.ParseInt(value, 10, 64)
 		if err != nil {
 			return ErrInvalidValue
 		}
-		name = strings.ToLower(name)
 		return s.storage.UpdateCounter(name, v)
 	}
 
@@ -46,29 +43,39 @@ func (s *MetricsService) UpdateMetricJSON(metric models.Metric) error {
 		if metric.Value == nil {
 			return ErrInvalidValue
 		}
-		name := strings.ToLower(metric.ID)
-		return s.storage.UpdateGauge(name, *metric.Value)
+		return s.storage.UpdateGauge(metric.ID, *metric.Value)
 	case "counter":
 		if metric.Delta == nil {
 			return ErrInvalidValue
 		}
-		name := strings.ToLower(metric.ID)
-		return s.storage.UpdateCounter(name, *metric.Delta)
+		return s.storage.UpdateCounter(metric.ID, *metric.Delta)
 	}
 
 	return ErrInvalidType
 }
 
+func (s *MetricsService) UpdateBatch(metrics []models.Metric) error {
+	for _, metric := range metrics {
+
+		if metric.ID == "" {
+			return ErrInvalidName
+		}
+		err := s.UpdateMetricJSON(metric)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (s *MetricsService) GetMetric(mType, name string) (string, error) {
 	switch mType {
-
 	case "gauge":
 		v, err := s.storage.GetGauge(name)
 		if err != nil {
 			return "", err
 		}
 		return strconv.FormatFloat(v, 'f', -1, 64), nil
-
 	case "counter":
 		v, err := s.storage.GetCounter(name)
 		if err != nil {
@@ -88,11 +95,9 @@ func (s *MetricsService) GetMetricJSON(mType, name string) (models.Metric, error
 	}
 
 	switch mType {
-
 	case "gauge":
 		v, _ := strconv.ParseFloat(value, 64)
 		return models.NewGauge(name, v), nil
-
 	case "counter":
 		v, _ := strconv.ParseInt(value, 10, 64)
 		return models.NewCounter(name, v), nil
@@ -107,4 +112,8 @@ func (s *MetricsService) GetListGauges() map[string]float64 {
 
 func (s *MetricsService) GetListCounters() map[string]int64 {
 	return s.storage.GetListCounters()
+}
+
+func (s *MetricsService) Ping(ctx context.Context) error {
+	return s.storage.Ping(ctx)
 }

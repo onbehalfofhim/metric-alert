@@ -48,40 +48,53 @@ func (s *Sender) Send(metrics []models.Metric) error {
 	return nil
 }
 
-func (s *Sender) SendJSON(metrics []models.Metric) error {
+func (s *Sender) doRequest(body any, endpoint string) error {
 	buf := &bytes.Buffer{}
-	for _, v := range metrics {
-		uri := fmt.Sprintf("%s/update", s.URL)
+	gz := gzip.NewWriter(buf)
 
-		gz := gzip.NewWriter(buf)
+	if err := json.NewEncoder(gz).Encode(body); err != nil {
+		return fmt.Errorf("can't encode request body: %w", err)
+	}
 
-		if err := json.NewEncoder(gz).Encode(v); err != nil {
-			return fmt.Errorf("can't encode request body: %w", err)
-		}
+	if err := gz.Close(); err != nil {
+		return fmt.Errorf("can't close gzip: %w", err)
+	}
 
-		if err := gz.Close(); err != nil {
-			return fmt.Errorf("can't close gzip: %w", err)
-		}
+	req, err := http.NewRequest(http.MethodPost, s.URL+endpoint, buf)
+	if err != nil {
+		return fmt.Errorf("can't create request: %w", err)
+	}
 
-		req, err := http.NewRequest(http.MethodPost, uri, buf)
-		if err != nil {
-			return fmt.Errorf("can't create request: %w", err)
-		}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Encoding", "gzip")
+	req.Header.Set("Accept-Encoding", "gzip")
 
-		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("Content-Encoding", "gzip")
-		req.Header.Set("Accept-Encoding", "gzip")
+	resp, err := s.Client.Do(req)
+	if err != nil {
+		return fmt.Errorf("can't send a post-request: %w", err)
+	}
+	defer resp.Body.Close()
 
-		resp, err := s.Client.Do(req)
-		if err != nil {
-			return fmt.Errorf("can't send a post-request: %w", err)
-		}
-		defer resp.Body.Close()
-		if resp.StatusCode == http.StatusNotFound || resp.StatusCode == http.StatusBadRequest {
-			return fmt.Errorf("bad request: %d", resp.StatusCode)
-		}
-		buf.Reset()
+	if resp.StatusCode == http.StatusNotFound || resp.StatusCode == http.StatusBadRequest {
+		return fmt.Errorf("bad request: %d", resp.StatusCode)
 	}
 
 	return nil
+}
+
+func (s *Sender) SendJSON(metrics []models.Metric) error {
+	for _, m := range metrics {
+		if err := s.doRequest(m, "/update/"); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (s *Sender) SendBatch(metrics []models.Metric) error {
+	if len(metrics) == 0 {
+		return nil
+	}
+	return s.doRequest(metrics, "/updates/")
 }
