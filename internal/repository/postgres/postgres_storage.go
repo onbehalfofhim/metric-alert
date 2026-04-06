@@ -3,9 +3,20 @@ package postgres
 import (
 	"context"
 	"database/sql"
+	"errors"
+	"time"
+
+	"github.com/jackc/pgconn"
+	"github.com/jackc/pgerrcode"
 
 	"github.com/onbehalfofhim/metric-alert/internal/repository"
 )
+
+var retryDelays = []time.Duration{
+	1 * time.Second,
+	3 * time.Second,
+	5 * time.Second,
+}
 
 type PostgresStorage struct {
 	db *sql.DB
@@ -25,12 +36,10 @@ func (p *PostgresStorage) UpdateGauge(name string, value float64) error {
 		ON CONFLICT (name)
 		DO UPDATE SET value = $2
 	`
-	_, err := p.db.Exec(query, name, value)
-	if err != nil {
+	return p.execWithRetry(func() error {
+		_, err := p.db.Exec(query, name, value)
 		return err
-	}
-
-	return nil
+	})
 }
 
 func (p *PostgresStorage) GetGauge(name string) (float64, error) {
@@ -80,12 +89,11 @@ func (p *PostgresStorage) UpdateCounter(name string, value int64) error {
 		ON CONFLICT (name)
 		DO UPDATE SET value = counters.value + $2
 	`
-	_, err := p.db.Exec(query, name, value)
-	if err != nil {
-		return err
-	}
 
-	return nil
+	return p.execWithRetry(func() error {
+		_, err := p.db.Exec(query, name, value)
+		return err
+	})
 }
 
 func (p *PostgresStorage) GetCounter(name string) (int64, error) {
@@ -127,4 +135,35 @@ func (p *PostgresStorage) GetListCounters() map[string]int64 {
 	}
 
 	return res
+}
+
+func isRetryablePGError(err error) bool {
+	var pgErr *pgconn.PgError
+
+	if errors.As(err, &pgErr) {
+		return pgerrcode.IsConnectionException(pgErr.Code)
+	}
+
+	return false
+}
+
+func (p *PostgresStorage) execWithRetry(fn func() error) error {
+	var err error
+
+	for i := 0; i <= len(retryDelays); i++ {
+		err = fn()
+		if err == nil {
+			return nil
+		}
+
+		if !isRetryablePGError(err) {
+			return err // НЕ retry
+		}
+
+		if i < len(retryDelays) {
+			time.Sleep(retryDelays[i])
+		}
+	}
+
+	return err
 }
