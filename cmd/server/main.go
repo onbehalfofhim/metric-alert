@@ -38,11 +38,13 @@ func run(cfg config.ServerConfig, logger *logger.Logger) error {
 		db, err := sql.Open("pgx", cfg.DatabaseDSN)
 		if err != nil {
 			logger.Error("Error connect to data base", "error", err)
+			return fmt.Errorf("can't connect to DB: %w", err)
 		}
 		defer db.Close()
 
 		if err := migrations.ApplyMigrations(db, "file://migrations"); err != nil {
 			logger.Error("Error apply migrations", "error", err)
+			return fmt.Errorf("can't apply migrations: %w", err)
 		}
 
 		storage = postgres.New(db)

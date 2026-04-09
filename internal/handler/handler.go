@@ -260,7 +260,7 @@ func (h *Handler) UpdateBatchHandler() http.HandlerFunc {
 			return
 		}
 
-		err := h.service.UpdateBatch(metrics)
+		err := h.service.UpdateBatch(req.Context(), metrics)
 		if err != nil {
 			http.Error(res, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 			return

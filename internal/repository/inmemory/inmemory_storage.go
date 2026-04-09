@@ -4,6 +4,7 @@ import (
 	"context"
 	"sync"
 
+	"github.com/onbehalfofhim/metric-alert/internal/models"
 	"github.com/onbehalfofhim/metric-alert/internal/repository"
 )
 
@@ -94,5 +95,9 @@ func (s *MemStorage) GetListCounters() map[string]int64 {
 }
 
 func (s *MemStorage) Ping(ctx context.Context) error {
+	return nil
+}
+
+func (s *MemStorage) UpdateBatch(ctx context.Context, metrics []models.Metric) error {
 	return nil
 }

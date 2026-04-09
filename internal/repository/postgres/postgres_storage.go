@@ -3,13 +3,11 @@ package postgres
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"time"
 
-	"github.com/jackc/pgconn"
-	"github.com/jackc/pgerrcode"
-
+	"github.com/onbehalfofhim/metric-alert/internal/models"
 	"github.com/onbehalfofhim/metric-alert/internal/repository"
+	"github.com/onbehalfofhim/metric-alert/internal/retry"
 )
 
 var retryDelays = []time.Duration{
@@ -36,7 +34,7 @@ func (p *PostgresStorage) UpdateGauge(name string, value float64) error {
 		ON CONFLICT (name)
 		DO UPDATE SET value = $2
 	`
-	return p.execWithRetry(func() error {
+	return retry.Retry(func() error {
 		_, err := p.db.Exec(query, name, value)
 		return err
 	})
@@ -90,7 +88,7 @@ func (p *PostgresStorage) UpdateCounter(name string, value int64) error {
 		DO UPDATE SET value = counters.value + $2
 	`
 
-	return p.execWithRetry(func() error {
+	return retry.Retry(func() error {
 		_, err := p.db.Exec(query, name, value)
 		return err
 	})
@@ -137,33 +135,45 @@ func (p *PostgresStorage) GetListCounters() map[string]int64 {
 	return res
 }
 
-func isRetryablePGError(err error) bool {
-	var pgErr *pgconn.PgError
-
-	if errors.As(err, &pgErr) {
-		return pgerrcode.IsConnectionException(pgErr.Code)
-	}
-
-	return false
+func (p *PostgresStorage) UpdateBatch(ctx context.Context, metrics []models.Metric) error {
+	return retry.Retry(func() error {
+		return p.UpdateBatchTx(ctx, metrics)
+	})
 }
 
-func (p *PostgresStorage) execWithRetry(fn func() error) error {
-	var err error
+func (p *PostgresStorage) UpdateBatchTx(ctx context.Context, metrics []models.Metric) error {
+	// начинаем транзакцию
+	tx, err := p.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
 
-	for i := 0; i <= len(retryDelays); i++ {
-		err = fn()
-		if err == nil {
-			return nil
-		}
-
-		if !isRetryablePGError(err) {
-			return err // НЕ retry
-		}
-
-		if i < len(retryDelays) {
-			time.Sleep(retryDelays[i])
+	for _, m := range metrics {
+		// все изменения записываются в транзакцию
+		switch m.MType {
+		case "gauge":
+			_, err := tx.ExecContext(ctx,
+				`INSERT INTO gauges (name, value)
+					VALUES ($1, $2)
+					ON CONFLICT (name)
+					DO UPDATE SET value = $2
+				`, m.ID, m.Value)
+			if err != nil {
+				return err
+			}
+		case "counter":
+			_, err := tx.ExecContext(ctx,
+				`INSERT INTO counters (name, value)
+					VALUES ($1, $2)
+					ON CONFLICT (name)
+					DO UPDATE SET value = counters.value + $2
+				`, m.ID, m.Delta)
+			if err != nil {
+				return err
+			}
 		}
 	}
-
-	return err
+	// завершаем транзакцию
+	return tx.Commit()
 }

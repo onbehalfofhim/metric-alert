@@ -54,18 +54,8 @@ func (s *MetricsService) UpdateMetricJSON(metric models.Metric) error {
 	return ErrInvalidType
 }
 
-func (s *MetricsService) UpdateBatch(metrics []models.Metric) error {
-	for _, metric := range metrics {
-
-		if metric.ID == "" {
-			return ErrInvalidName
-		}
-		err := s.UpdateMetricJSON(metric)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
+func (s *MetricsService) UpdateBatch(ctx context.Context, metrics []models.Metric) error {
+	return s.storage.UpdateBatch(ctx, metrics)
 }
 
 func (s *MetricsService) GetMetric(mType, name string) (string, error) {

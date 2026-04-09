@@ -4,22 +4,13 @@ import (
 	"bytes"
 	"compress/gzip"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
-	"time"
 
 	"github.com/onbehalfofhim/metric-alert/internal/models"
+	"github.com/onbehalfofhim/metric-alert/internal/retry"
 )
-
-var retryDelays = []time.Duration{
-	1 * time.Second,
-	3 * time.Second,
-	5 * time.Second,
-}
-
-var ErrBadRequest = errors.New("bad request")
 
 type Sender struct {
 	Client *http.Client
@@ -86,7 +77,7 @@ func (s *Sender) doRequest(body any, endpoint string) error {
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusNotFound || resp.StatusCode == http.StatusBadRequest {
-		return fmt.Errorf("%w: %d", ErrBadRequest, resp.StatusCode)
+		return fmt.Errorf("%w: %d", retry.ErrBadRequest, resp.StatusCode)
 	}
 
 	if resp.StatusCode >= 500 {
@@ -111,28 +102,7 @@ func (s *Sender) SendBatch(metrics []models.Metric) error {
 		return nil
 	}
 
-	return s.retry(func() error {
+	return retry.Retry(func() error {
 		return s.doRequest(metrics, "/updates/")
 	})
-}
-
-func (s *Sender) retry(fn func() error) error {
-	var err error
-
-	for i := 0; i <= len(retryDelays); i++ {
-		err = fn()
-		if err == nil {
-			return nil
-		}
-
-		if errors.Is(err, ErrBadRequest) {
-			return err
-		}
-
-		if i < len(retryDelays) {
-			time.Sleep(retryDelays[i])
-		}
-	}
-
-	return fmt.Errorf("all retries failed: %w", err)
 }
