@@ -36,7 +36,7 @@ func main() {
 
 		metrics, delta := collector.PrepareMetrics()
 
-		err := client.Send(metrics)
+		err := client.SendBatch(metrics)
 		if err != nil {
 			logger.Error("failed to send metrics batch", "error", err)
 		}

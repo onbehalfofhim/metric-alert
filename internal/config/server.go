@@ -14,6 +14,7 @@ type ServerConfig struct {
 	StoreIntervalRaw int           `env:"STORE_INTERVAL"`
 	FilePath         string        `env:"FILE_STORAGE_PATH"`
 	Restore          bool          `env:"RESTORE"`
+	DatabaseDSN      string        `env:"DATABASE_DSN"`
 }
 
 // обработка аргументов командной строки
@@ -28,6 +29,8 @@ func ParseServerFlags() (ServerConfig, error) {
 	flag.BoolVar(&cfg.Restore, "r", true, "load metrics from storage")
 
 	flag.IntVar(&cfg.StoreIntervalRaw, "i", 300, "store interval in seconds")
+
+	flag.StringVar(&cfg.DatabaseDSN, "d", "", "address to connect DataBase")
 
 	// парсим переданные серверу аргументы командной строки в зарегистрированные переменные
 	flag.Parse()
