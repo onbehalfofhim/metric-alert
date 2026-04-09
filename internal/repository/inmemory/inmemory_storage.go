@@ -2,6 +2,7 @@ package inmemory
 
 import (
 	"context"
+	"errors"
 	"sync"
 
 	"github.com/onbehalfofhim/metric-alert/internal/models"
@@ -99,5 +100,28 @@ func (s *MemStorage) Ping(ctx context.Context) error {
 }
 
 func (s *MemStorage) UpdateBatch(ctx context.Context, metrics []models.Metric) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	for _, metric := range metrics {
+		switch metric.MType {
+
+		case "gauge":
+			if metric.Value == nil {
+				return errors.New("unknown metric value")
+			}
+			s.UpdateGauge(metric.ID, *metric.Value)
+
+		case "counter":
+			if metric.Delta == nil {
+				return errors.New("unknown metric value")
+			}
+			s.UpdateCounter(metric.ID, *metric.Delta)
+
+		default:
+			return errors.New("unknown metric type")
+		}
+	}
+
 	return nil
 }
