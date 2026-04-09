@@ -100,12 +100,8 @@ func (s *MemStorage) Ping(ctx context.Context) error {
 }
 
 func (s *MemStorage) UpdateBatch(ctx context.Context, metrics []models.Metric) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	for _, metric := range metrics {
 		switch metric.MType {
-
 		case "gauge":
 			if metric.Value == nil {
 				return errors.New("unknown metric value")
