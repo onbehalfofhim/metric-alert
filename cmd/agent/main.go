@@ -20,7 +20,7 @@ func main() {
 	collector := agent.NewCollector()
 
 	// создание клиента для отправки метрик
-	client := agent.NewSender(cfg.RunAddr)
+	client := agent.NewSender(cfg.RunAddr, cfg.Key)
 
 	// горутина для сборка метрик
 	go func() {
