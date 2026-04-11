@@ -72,5 +72,5 @@ func run(cfg config.ServerConfig, logger *logger.Logger) error {
 	service := service.NewMetricService(storage)
 	handler := handler.New(service, logger)
 
-	return http.ListenAndServe(cfg.RunAddr, handler.Route(logger))
+	return http.ListenAndServe(cfg.RunAddr, handler.Route(logger, cfg.Key))
 }

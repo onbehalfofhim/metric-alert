@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/onbehalfofhim/metric-alert/internal/crypto"
 	"github.com/onbehalfofhim/metric-alert/internal/models"
 	"github.com/onbehalfofhim/metric-alert/internal/retry"
 )
@@ -15,12 +16,14 @@ import (
 type Sender struct {
 	Client *http.Client
 	URL    string
+	key    string
 }
 
-func NewSender(url string) *Sender {
+func NewSender(url, key string) *Sender {
 	return &Sender{
 		URL:    url,
 		Client: &http.Client{},
+		key:    key,
 	}
 }
 
@@ -69,6 +72,11 @@ func (s *Sender) doRequest(body any, endpoint string) error {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Content-Encoding", "gzip")
 	req.Header.Set("Accept-Encoding", "gzip")
+
+	if s.key != "" {
+		hash := crypto.HashSHA256(buf.Bytes(), s.key)
+		req.Header.Set("HashSHA256", hash)
+	}
 
 	resp, err := s.Client.Do(req)
 	if err != nil {
