@@ -1,10 +1,14 @@
 package agent
 
 import (
+	"fmt"
 	"math/rand"
 	"runtime"
 	"sync"
 	"sync/atomic"
+
+	"github.com/shirou/gopsutil/v3/cpu"
+	"github.com/shirou/gopsutil/v3/mem"
 
 	"github.com/onbehalfofhim/metric-alert/internal/models"
 )
@@ -99,4 +103,26 @@ func (c *Collector) CollectMetrics() {
 
 	//== Random Value ==
 	c.metrics["RandomValue"] = models.NewGauge("RandomValue", rand.Float64())
+}
+
+func (c *Collector) CollectSystemMetrics() {
+	cpuPercents, err := cpu.Percent(0, true)
+	if err == nil {
+		c.mu.Lock()
+
+		for i, v := range cpuPercents {
+			name := fmt.Sprintf("CPUutilization%d", i+1)
+			c.metrics[name] = models.NewGauge(name, v)
+		}
+
+		c.mu.Unlock()
+	}
+
+	vm, err := mem.VirtualMemory()
+	if err == nil {
+		c.mu.Lock()
+		c.metrics["TotalMemory"] = models.NewGauge("TotalMemory", float64(vm.Total))
+		c.metrics["FreeMemory"] = models.NewGauge("FreeMemory", float64(vm.Free))
+		c.mu.Unlock()
+	}
 }
