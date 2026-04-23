@@ -1,9 +1,9 @@
 package agent
 
 import (
-	"fmt"
 	"math/rand"
 	"runtime"
+	"strconv"
 	"sync"
 	"sync/atomic"
 
@@ -108,14 +108,13 @@ func (c *Collector) CollectMetrics() {
 func (c *Collector) CollectSystemMetrics() {
 	cpuPercents, err := cpu.Percent(0, true)
 	if err == nil {
-		c.mu.Lock()
-
 		for i, v := range cpuPercents {
-			name := fmt.Sprintf("CPUutilization%d", i+1)
-			c.metrics[name] = models.NewGauge(name, v)
-		}
+			name := "CPUutilization" + strconv.Itoa(i+1)
 
-		c.mu.Unlock()
+			c.mu.Lock()
+			c.metrics[name] = models.NewGauge(name, v)
+			c.mu.Unlock()
+		}
 	}
 
 	vm, err := mem.VirtualMemory()

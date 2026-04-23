@@ -11,11 +11,6 @@ import (
 func HashVerifier(key string) func(http.Handler) http.Handler {
 	return func(h http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if key == "" {
-				h.ServeHTTP(w, r)
-				return
-			}
-
 			// проверяем, что клиент отправил hash
 			recievedHash := r.Header.Get("HashSHA256")
 			if recievedHash == "" {

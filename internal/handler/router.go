@@ -13,11 +13,15 @@ func (h *Handler) Route(log *logger.Logger, key string) http.Handler {
 	r.Use(middleware.RequestLogger(log))
 
 	// проверка входящего тела
-	r.Use(middleware.HashVerifier(key))
+	if key != "" {
+		r.Use(middleware.HashVerifier(key))
+	}
 
 	// обработка ответа
 	r.Use(middleware.GzipMiddleware)
-	r.Use(middleware.HashSigner(key))
+	if key != "" {
+		r.Use(middleware.HashSigner(key))
+	}
 
 	r.Get("/", h.RootHandler())
 	r.Route("/update", func(r chi.Router) {

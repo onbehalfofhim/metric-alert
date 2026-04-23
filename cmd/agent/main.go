@@ -28,20 +28,16 @@ func main() {
 	// создание клиента для отправки метрик
 	client := agent.NewSender(cfg.RunAddr, cfg.Key)
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
 
-	sigCh := make(chan os.Signal, 1)
-	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+	var wg sync.WaitGroup
 
-	go func() {
-		<-sigCh
-		logger.Info("shutting down")
-		cancel()
-	}()
-
+	wg.Add(2)
 	// горутина для сбора runtime-метрик
 	go func() {
+		defer wg.Done()
+
 		ticker := time.NewTicker(time.Duration(cfg.PollInterval) * time.Second)
 		defer ticker.Stop()
 
@@ -59,6 +55,8 @@ func main() {
 
 	// горутина для сбора gopsutil-метрик
 	go func() {
+		defer wg.Done()
+
 		ticker := time.NewTicker(time.Duration(cfg.PollInterval) * time.Second)
 		defer ticker.Stop()
 
@@ -74,10 +72,8 @@ func main() {
 		}
 	}()
 
-	//создание буферизированного канала дляпринятия задач на отправку
+	//создание буферизированного канала для принятия задач на отправку
 	jobs := make(chan []models.Metric, cfg.RateLimit)
-
-	var wg sync.WaitGroup
 
 	// создание и запуск воркеров для отправки метрик на сервер
 	for i := 0; i < cfg.RateLimit; i++ {
@@ -109,36 +105,24 @@ func main() {
 		}(i + 1)
 	}
 
-	// горутина для формирования задачи на отпраку меткри на сервер
-	go func() {
-		ticker := time.NewTicker(time.Duration(cfg.ReportInterval) * time.Second)
-		defer ticker.Stop()
+	// формирование задачи на отпраку меткри на сервер
+	ticker := time.NewTicker(time.Duration(cfg.ReportInterval) * time.Second)
+	defer ticker.Stop()
 
-		for {
-			select {
-			case <-ticker.C:
-				metrics, delta := collector.PrepareMetrics()
-				if len(metrics) == 0 {
-					continue
-				}
-				select {
-				case jobs <- metrics:
-					collector.CommitPollCount(delta)
-
-				case <-ctx.Done():
-					return
-				}
-
-			case <-ctx.Done():
-				logger.Info("sender stopped")
-				return
+	for {
+		select {
+		case <-ticker.C:
+			metrics, delta := collector.PrepareMetrics()
+			if len(metrics) > 0 {
+				jobs <- metrics
+				collector.CommitPollCount(delta)
 			}
+
+		case <-ctx.Done():
+			logger.Info("sender stopped")
+			close(jobs)
+			wg.Wait()
+			return
 		}
-	}()
-
-	<-ctx.Done()
-	close(jobs)
-	wg.Wait()
-
-	logger.Info("agent stopped gracefully")
+	}
 }
