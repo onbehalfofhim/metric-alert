@@ -19,12 +19,14 @@ import (
 type Handler struct {
 	service *service.MetricsService
 	logger  *logger.Logger
+	audit   service.AuditPublisher
 }
 
-func New(service *service.MetricsService, logger *logger.Logger) *Handler {
+func New(service *service.MetricsService, logger *logger.Logger, audit service.AuditPublisher) *Handler {
 	return &Handler{
 		service: service,
 		logger:  logger,
+		audit:   audit,
 	}
 }
 
@@ -104,6 +106,7 @@ func (h *Handler) UpdateHandler() http.HandlerFunc {
 		}
 
 		res.WriteHeader(http.StatusOK)
+		h.notifyAudit(req.RemoteAddr, metricName, nil)
 	}
 }
 
@@ -132,6 +135,7 @@ func (h *Handler) UpdateHandlerJSON() http.HandlerFunc {
 		}
 
 		res.WriteHeader(http.StatusOK)
+		h.notifyAudit(req.RemoteAddr, m.ID, nil)
 	}
 }
 
@@ -267,5 +271,34 @@ func (h *Handler) UpdateBatchHandler() http.HandlerFunc {
 		}
 
 		res.WriteHeader(http.StatusOK)
+
+		h.notifyAudit(req.RemoteAddr, "", metrics)
 	}
+}
+
+func (h *Handler) notifyAudit(ip string, name string, metrics []models.Metric) {
+	if name == "" && metrics == nil {
+		h.logger.Info("Cant't send notification: did't get name of metric(s)")
+	}
+
+	var auditMessage models.AuditMessage
+	if name != "" {
+		auditMessage = models.AuditMessage{
+			TS:      time.Now().Unix(),
+			Metrics: []string{name},
+			IPAddr:  ip,
+		}
+	} else {
+		auditMessage = models.AuditMessage{
+			TS:      time.Now().Unix(),
+			Metrics: make([]string, len(metrics)),
+			IPAddr:  ip,
+		}
+
+		for i, metric := range metrics {
+			auditMessage.Metrics[i] = metric.ID
+		}
+	}
+
+	h.audit.Notify(auditMessage)
 }
