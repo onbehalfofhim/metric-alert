@@ -15,6 +15,7 @@ type ServerConfig struct {
 	FilePath         string        `env:"FILE_STORAGE_PATH"`
 	Restore          bool          `env:"RESTORE"`
 	DatabaseDSN      string        `env:"DATABASE_DSN"`
+	Key              string        `env:"KEY"`
 }
 
 // обработка аргументов командной строки
@@ -31,6 +32,8 @@ func ParseServerFlags() (ServerConfig, error) {
 	flag.IntVar(&cfg.StoreIntervalRaw, "i", 300, "store interval in seconds")
 
 	flag.StringVar(&cfg.DatabaseDSN, "d", "", "address to connect DataBase")
+
+	flag.StringVar(&cfg.Key, "k", "", "signing key")
 
 	// парсим переданные серверу аргументы командной строки в зарегистрированные переменные
 	flag.Parse()

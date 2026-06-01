@@ -8,10 +8,20 @@ import (
 	"github.com/onbehalfofhim/metric-alert/internal/middleware"
 )
 
-func (h *Handler) Route(log *logger.Logger) http.Handler {
+func (h *Handler) Route(log *logger.Logger, key string) http.Handler {
 	r := chi.NewRouter()
 	r.Use(middleware.RequestLogger(log))
+
+	// проверка входящего тела
+	if key != "" {
+		r.Use(middleware.HashVerifier(key))
+	}
+
+	// обработка ответа
 	r.Use(middleware.GzipMiddleware)
+	if key != "" {
+		r.Use(middleware.HashSigner(key))
+	}
 
 	r.Get("/", h.RootHandler())
 	r.Route("/update", func(r chi.Router) {

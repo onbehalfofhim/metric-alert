@@ -19,7 +19,7 @@ func TestHandler_Route(t *testing.T) {
 
 	h := handler.New(service, logger)
 
-	router := h.Route(logger)
+	router := h.Route(logger, "")
 
 	tests := []struct {
 		name   string
