@@ -6,6 +6,7 @@ import (
 	"github.com/onbehalfofhim/metric-alert/internal/models"
 )
 
+// AuditService - управляет наблюдателями
 type AuditService struct {
 	observers map[string]audit.AuditObserver
 	logger    *logger.Logger
