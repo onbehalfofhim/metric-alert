@@ -14,10 +14,11 @@ import (
 
 func TestHandler_Route(t *testing.T) {
 	storage := inmemory.NewMemStorage()
-	service := service.NewMetricService(storage)
+	mService := service.NewMetricService(storage)
 	logger := logger.NewLogger()
+	audit := service.NewAuditService(logger)
 
-	h := handler.New(service, logger)
+	h := handler.New(mService, logger, audit)
 
 	router := h.Route(logger, "")
 

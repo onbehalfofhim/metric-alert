@@ -17,9 +17,11 @@ import (
 
 func Test_RootHandler(t *testing.T) {
 	storage := inmemory.NewMemStorage()
-	service := service.NewMetricService(storage)
+	mService := service.NewMetricService(storage)
 	logger := logger.NewLogger()
-	h := New(service, logger)
+	audit := service.NewAuditService(logger)
+
+	h := New(mService, logger, audit)
 
 	r := chi.NewRouter()
 	r.Get("/", h.RootHandler())
@@ -70,9 +72,11 @@ func Test_UpdateHandler(t *testing.T) {
 	}
 
 	storage := inmemory.NewMemStorage()
-	service := service.NewMetricService(storage)
+	mService := service.NewMetricService(storage)
 	logger := logger.NewLogger()
-	h := New(service, logger)
+	audit := service.NewAuditService(logger)
+
+	h := New(mService, logger, audit)
 
 	r := chi.NewRouter()
 	r.Post("/update/{type}/{name}/{value}", h.UpdateHandler())
@@ -100,13 +104,15 @@ func Test_UpdateHandler(t *testing.T) {
 
 func Test_GetMetricHandler(t *testing.T) {
 	storage := inmemory.NewMemStorage()
-	service := service.NewMetricService(storage)
+	mService := service.NewMetricService(storage)
 	logger := logger.NewLogger()
-	h := New(service, logger)
+	audit := service.NewAuditService(logger)
 
-	service.UpdateMetric("gauge", "metric1", "8.7")
-	service.UpdateMetric("counter", "metric2", "-9")
-	service.UpdateMetric("counter", "testSetGet39", "3")
+	h := New(mService, logger, audit)
+
+	mService.UpdateMetric("gauge", "metric1", "8.7")
+	mService.UpdateMetric("counter", "metric2", "-9")
+	mService.UpdateMetric("counter", "testSetGet39", "3")
 
 	r := chi.NewRouter()
 	r.Get("/value/{type}/{name}", h.GetMetricHandler())
