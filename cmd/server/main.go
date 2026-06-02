@@ -3,7 +3,10 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	"log"
 	"net/http"
+
+	_ "net/http/pprof"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 
@@ -26,6 +29,10 @@ func main() {
 	if error != nil {
 		logger.Error("Error in parse flags and variables", "error", error)
 	}
+
+	go func() {
+		log.Println(http.ListenAndServe("localhost:6060", nil))
+	}()
 
 	if err := run(cfg, logger); err != nil {
 		logger.Error("Error in run server", "error", err)

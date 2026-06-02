@@ -1,16 +1,8 @@
 package templates
 
 import (
-	_ "embed"
-	"html/template"
 	"io"
-)
-
-//go:embed metrics.html
-var metricsHTML string
-
-var metricsTmpl = template.Must(
-	template.New("metrics").Parse(metricsHTML),
+	"strings"
 )
 
 type MetricView struct {
@@ -24,5 +16,54 @@ type MetricsPageData struct {
 }
 
 func RenderMetricsPage(w io.Writer, data MetricsPageData) error {
-	return metricsTmpl.Execute(w, data)
+	var b strings.Builder
+
+	b.Grow(len(data.Gauges)*50 + len(data.Counters)*50)
+
+	b.WriteString(`<!DOCTYPE html>
+		<html>
+		<head>
+		<title>Metrics</title>
+		</head>
+		<body>
+		<h1>Current Metrics</h1>
+		<table border="1">
+		<thead>
+		<tr>
+		<th>Name</th>
+		<th>Value</th>
+		</tr>
+		</thead>
+		<tbody>
+	`)
+
+	b.WriteString(`<tr><td colspan="2">gauges</td></tr>`)
+
+	for _, m := range data.Gauges {
+		b.WriteString("<tr><td>")
+		b.WriteString(m.Name)
+		b.WriteString("</td><td>")
+		b.WriteString(m.Value)
+		b.WriteString("</td></tr>")
+	}
+
+	b.WriteString(`<tr><td colspan="2">counters</td></tr>`)
+
+	for _, m := range data.Counters {
+		b.WriteString("<tr><td>")
+		b.WriteString(m.Name)
+		b.WriteString("</td><td>")
+		b.WriteString(m.Value)
+		b.WriteString("</td></tr>")
+	}
+
+	b.WriteString(`
+		</tbody>
+		</table>
+		</body>
+		</html>
+	`)
+
+	_, err := io.WriteString(w, b.String())
+	return err
 }
