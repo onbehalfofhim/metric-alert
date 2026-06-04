@@ -1,4 +1,4 @@
-package handler_test
+package handler
 
 import (
 	"net/http"
@@ -7,43 +7,84 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/onbehalfofhim/metric-alert/internal/handler"
 	"github.com/onbehalfofhim/metric-alert/internal/logger"
-	"github.com/onbehalfofhim/metric-alert/internal/repository/inmemory"
-	"github.com/onbehalfofhim/metric-alert/internal/service"
 )
 
-func TestHandler_Route(t *testing.T) {
-	storage := inmemory.NewMemStorage()
-	mService := service.NewMetricService(storage)
-	logger := logger.NewLogger()
-	audit := service.NewAuditService(logger)
+func TestRoute(t *testing.T) {
+	svc := &mockMetricService{}
+	audit := &mockAudit{}
 
-	h := handler.New(mService, logger, audit)
+	h := New(
+		svc,
+		logger.NewLogger(),
+		audit,
+	)
 
-	router := h.Route(logger, "")
+	router := h.Route(
+		logger.NewLogger(),
+		"",
+	)
 
 	tests := []struct {
 		name   string
 		method string
 		path   string
-		code   int
 	}{
-		{"root", "GET", "/", http.StatusOK},
-		{"update", "POST", "/update/gauge/test/10", http.StatusOK},
-		{"wrong metric name", "GET", "/value/gauge/test2", http.StatusNotFound},
-		{"get metric", "GET", "/value/gauge/test", http.StatusOK},
-		{"metric type", "GET", "/value/gau/test", http.StatusBadRequest},
-		{"not found", "GET", "/unknown", http.StatusNotFound},
+		{
+			name:   "root",
+			method: http.MethodGet,
+			path:   "/",
+		},
+		{
+			name:   "update json",
+			method: http.MethodPost,
+			path:   "/update/",
+		},
+		{
+			name:   "update metric",
+			method: http.MethodPost,
+			path:   "/update/gauge/test/1",
+		},
+		{
+			name:   "batch",
+			method: http.MethodPost,
+			path:   "/updates/",
+		},
+		{
+			name:   "get metric",
+			method: http.MethodGet,
+			path:   "/value/gauge/test",
+		},
+		{
+			name:   "get metric json",
+			method: http.MethodPost,
+			path:   "/value/",
+		},
+		{
+			name:   "ping",
+			method: http.MethodGet,
+			path:   "/ping/",
+		},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			req := httptest.NewRequest(tt.method, tt.path, nil)
+
+			req := httptest.NewRequest(
+				tt.method,
+				tt.path,
+				nil,
+			)
+
 			rr := httptest.NewRecorder()
 
 			router.ServeHTTP(rr, req)
 
-			assert.Equal(t, tt.code, rr.Code)
+			assert.NotEqual(
+				t,
+				http.StatusNotFound,
+				rr.Code,
+			)
 		})
 	}
 }

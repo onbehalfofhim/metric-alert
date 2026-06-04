@@ -18,7 +18,8 @@ import (
 	"github.com/onbehalfofhim/metric-alert/internal/repository/file"
 	"github.com/onbehalfofhim/metric-alert/internal/repository/inmemory"
 	"github.com/onbehalfofhim/metric-alert/internal/repository/postgres"
-	"github.com/onbehalfofhim/metric-alert/internal/service"
+	"github.com/onbehalfofhim/metric-alert/internal/service/audit_service"
+	"github.com/onbehalfofhim/metric-alert/internal/service/metric"
 	"github.com/onbehalfofhim/metric-alert/migrations"
 )
 
@@ -79,7 +80,7 @@ func run(cfg config.ServerConfig, logger *logger.Logger) error {
 		logger.Info("storage type: Inmemory", "reestore from file", cfg.Restore, "file", cfg.FilePath)
 	}
 
-	auditService := service.NewAuditService(logger)
+	auditService := audit_service.NewAuditService(logger)
 
 	if cfg.AuditFile != "" || cfg.AuditURL != "" {
 		if cfg.AuditFile != "" {
@@ -92,7 +93,7 @@ func run(cfg config.ServerConfig, logger *logger.Logger) error {
 		logger.Info("audit service is not enabled, skipping notification")
 	}
 
-	service := service.NewMetricService(storage)
+	service := metric.NewMetricService(storage)
 	handler := handler.New(service, logger, auditService)
 
 	return http.ListenAndServe(cfg.RunAddr, handler.Route(logger, cfg.Key))

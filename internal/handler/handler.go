@@ -18,12 +18,12 @@ import (
 )
 
 type Handler struct {
-	service *service.MetricsService
+	service service.MetricHandler
 	logger  *logger.Logger
-	audit   *service.AuditService
+	audit   service.Auditer
 }
 
-func New(service *service.MetricsService, logger *logger.Logger, audit *service.AuditService) *Handler {
+func New(service service.MetricHandler, logger *logger.Logger, audit service.Auditer) *Handler {
 	return &Handler{
 		service: service,
 		logger:  logger,
@@ -223,12 +223,12 @@ func (h *Handler) GetMetricHandlerJSON() http.HandlerFunc {
 			return
 		}
 
+		res.WriteHeader(http.StatusOK)
+
 		enc := json.NewEncoder(res)
 		if err := enc.Encode(resp); err != nil {
 			http.Error(res, "cannot encode response body", http.StatusInternalServerError)
 		}
-
-		res.WriteHeader(http.StatusOK)
 	}
 }
 

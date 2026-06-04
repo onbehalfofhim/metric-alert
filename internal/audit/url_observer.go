@@ -28,7 +28,7 @@ func NewURLObserver(url string, logger *logger.Logger) *URLObserver {
 }
 
 func (o *URLObserver) GetID() string {
-	return fmt.Sprintf("audet-observer-%s", o.url)
+	return fmt.Sprintf("audit-observer-%s", o.url)
 }
 
 func (o *URLObserver) Notify(message models.AuditMessage) {
@@ -58,6 +58,10 @@ func (o *URLObserver) sendToURL(message models.AuditMessage) error {
 		return err
 	}
 	defer resp.Body.Close()
+
+	if resp.StatusCode >= 400 {
+		return fmt.Errorf("unexpected status code: %d", resp.StatusCode)
+	}
 
 	return nil
 }

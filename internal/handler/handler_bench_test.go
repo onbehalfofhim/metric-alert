@@ -8,7 +8,7 @@ import (
 
 	"github.com/onbehalfofhim/metric-alert/internal/logger"
 	"github.com/onbehalfofhim/metric-alert/internal/repository/inmemory"
-	"github.com/onbehalfofhim/metric-alert/internal/service"
+	"github.com/onbehalfofhim/metric-alert/internal/service/metric"
 )
 
 func BenchmarkRootHandler(b *testing.B) {
@@ -21,7 +21,7 @@ func BenchmarkRootHandler(b *testing.B) {
 		_ = storage.UpdateCounter(name, int64(i))
 	}
 
-	service := service.NewMetricService(storage)
+	service := metric.NewMetricService(storage)
 
 	handler := &Handler{
 		service: service,
