@@ -8,10 +8,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/onbehalfofhim/metric-alert/internal/logger"
-	"github.com/onbehalfofhim/metric-alert/internal/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/onbehalfofhim/metric-alert/internal/logger"
+	"github.com/onbehalfofhim/metric-alert/internal/models"
 )
 
 func TestNewURLObserver(t *testing.T) {
