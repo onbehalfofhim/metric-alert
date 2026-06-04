@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+
 	"github.com/onbehalfofhim/metric-alert/internal/logger"
 	"github.com/onbehalfofhim/metric-alert/internal/models"
 	"github.com/onbehalfofhim/metric-alert/internal/repository"
@@ -17,14 +18,16 @@ import (
 )
 
 type Handler struct {
-	service *service.MetricsService
+	service service.MetricHandler
 	logger  *logger.Logger
+	audit   service.Auditer
 }
 
-func New(service *service.MetricsService, logger *logger.Logger) *Handler {
+func New(service service.MetricHandler, logger *logger.Logger, audit service.Auditer) *Handler {
 	return &Handler{
 		service: service,
 		logger:  logger,
+		audit:   audit,
 	}
 }
 
@@ -104,6 +107,7 @@ func (h *Handler) UpdateHandler() http.HandlerFunc {
 		}
 
 		res.WriteHeader(http.StatusOK)
+		h.notifyAudit(req.RemoteAddr, metricName, nil)
 	}
 }
 
@@ -132,6 +136,7 @@ func (h *Handler) UpdateHandlerJSON() http.HandlerFunc {
 		}
 
 		res.WriteHeader(http.StatusOK)
+		h.notifyAudit(req.RemoteAddr, m.ID, nil)
 	}
 }
 
@@ -218,12 +223,12 @@ func (h *Handler) GetMetricHandlerJSON() http.HandlerFunc {
 			return
 		}
 
+		res.WriteHeader(http.StatusOK)
+
 		enc := json.NewEncoder(res)
 		if err := enc.Encode(resp); err != nil {
 			http.Error(res, "cannot encode response body", http.StatusInternalServerError)
 		}
-
-		res.WriteHeader(http.StatusOK)
 	}
 }
 
@@ -267,5 +272,34 @@ func (h *Handler) UpdateBatchHandler() http.HandlerFunc {
 		}
 
 		res.WriteHeader(http.StatusOK)
+
+		h.notifyAudit(req.RemoteAddr, "", metrics)
 	}
+}
+
+func (h *Handler) notifyAudit(ip string, name string, metrics []models.Metric) {
+	if name == "" && metrics == nil {
+		h.logger.Info("Cant't send notification: did't get name of metric(s)")
+	}
+
+	var auditMessage models.AuditMessage
+	if name != "" {
+		auditMessage = models.AuditMessage{
+			TS:      time.Now().Unix(),
+			Metrics: []string{name},
+			IPAddr:  ip,
+		}
+	} else {
+		auditMessage = models.AuditMessage{
+			TS:      time.Now().Unix(),
+			Metrics: make([]string, len(metrics)),
+			IPAddr:  ip,
+		}
+
+		for i, metric := range metrics {
+			auditMessage.Metrics[i] = metric.ID
+		}
+	}
+
+	h.audit.Notify(auditMessage)
 }

@@ -1,4 +1,4 @@
-package service
+package metric
 
 import (
 	"context"
@@ -6,6 +6,7 @@ import (
 
 	"github.com/onbehalfofhim/metric-alert/internal/models"
 	"github.com/onbehalfofhim/metric-alert/internal/repository"
+	"github.com/onbehalfofhim/metric-alert/internal/service"
 )
 
 type MetricsService struct {
@@ -23,35 +24,35 @@ func (s *MetricsService) UpdateMetric(mType, name, value string) error {
 	case "gauge":
 		v, err := strconv.ParseFloat(value, 64)
 		if err != nil {
-			return ErrInvalidValue
+			return service.ErrInvalidValue
 		}
 		return s.storage.UpdateGauge(name, v)
 	case "counter":
 		v, err := strconv.ParseInt(value, 10, 64)
 		if err != nil {
-			return ErrInvalidValue
+			return service.ErrInvalidValue
 		}
 		return s.storage.UpdateCounter(name, v)
 	}
 
-	return ErrInvalidType
+	return service.ErrInvalidType
 }
 
 func (s *MetricsService) UpdateMetricJSON(metric models.Metric) error {
 	switch metric.MType {
 	case "gauge":
 		if metric.Value == nil {
-			return ErrInvalidValue
+			return service.ErrInvalidValue
 		}
 		return s.storage.UpdateGauge(metric.ID, *metric.Value)
 	case "counter":
 		if metric.Delta == nil {
-			return ErrInvalidValue
+			return service.ErrInvalidValue
 		}
 		return s.storage.UpdateCounter(metric.ID, *metric.Delta)
 	}
 
-	return ErrInvalidType
+	return service.ErrInvalidType
 }
 
 func (s *MetricsService) UpdateBatch(ctx context.Context, metrics []models.Metric) error {
@@ -74,7 +75,7 @@ func (s *MetricsService) GetMetric(mType, name string) (string, error) {
 		return strconv.FormatInt(v, 10), nil
 	}
 
-	return "", ErrInvalidType
+	return "", service.ErrInvalidType
 }
 
 func (s *MetricsService) GetMetricJSON(mType, name string) (models.Metric, error) {
@@ -93,7 +94,7 @@ func (s *MetricsService) GetMetricJSON(mType, name string) (models.Metric, error
 		return models.NewCounter(name, v), nil
 	}
 
-	return models.Metric{}, ErrInvalidType
+	return models.Metric{}, service.ErrInvalidType
 }
 
 func (s *MetricsService) GetListGauges() map[string]float64 {

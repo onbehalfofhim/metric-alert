@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/caarlos0/env/v11"
+	"github.com/joho/godotenv"
 )
 
 type ServerConfig struct {
@@ -16,12 +17,16 @@ type ServerConfig struct {
 	Restore          bool          `env:"RESTORE"`
 	DatabaseDSN      string        `env:"DATABASE_DSN"`
 	Key              string        `env:"KEY"`
+	AuditFile        string        `env:"AUDIT_FILE"`
+	AuditURL         string        `env:"AUDIT_URL"`
 }
 
 // обработка аргументов командной строки
 // и сохраняет их значения в структуре
 func ParseServerFlags() (ServerConfig, error) {
 	var cfg ServerConfig
+
+	_ = godotenv.Load()
 
 	// регистрируем переменную RunAddr
 	// как аргумент -a со значением по умолчанию
@@ -34,6 +39,9 @@ func ParseServerFlags() (ServerConfig, error) {
 	flag.StringVar(&cfg.DatabaseDSN, "d", "", "address to connect DataBase")
 
 	flag.StringVar(&cfg.Key, "k", "", "signing key")
+
+	flag.StringVar(&cfg.AuditFile, "audit-file", "", "file path to write audit")
+	flag.StringVar(&cfg.AuditFile, "audit-url", "", "addres to send audit")
 
 	// парсим переданные серверу аргументы командной строки в зарегистрированные переменные
 	flag.Parse()
