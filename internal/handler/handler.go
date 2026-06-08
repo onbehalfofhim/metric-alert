@@ -17,12 +17,15 @@ import (
 	"github.com/onbehalfofhim/metric-alert/internal/templates"
 )
 
+// MetricHandler обслуживает HTTP-запросы практического трека метрик.
+// Содержит ссылки на сервис метрик, логгер и аудит.
 type Handler struct {
 	service service.MetricHandler
 	logger  *logger.Logger
 	audit   service.Auditer
 }
 
+// New конструирует экземпляр обработчика метрик.
 func New(service service.MetricHandler, logger *logger.Logger, audit service.Auditer) *Handler {
 	return &Handler{
 		service: service,
@@ -50,7 +53,7 @@ func mapToMetricView[T any](m map[string]T, format func(T) string) []templates.M
 	return result
 }
 
-// Обработчик корневого запроса
+// RootHandler отдает html с табличным представлением всех метрик
 func (h *Handler) RootHandler() http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		//форматируем метрики типа gauge
@@ -89,7 +92,7 @@ func (h *Handler) RootHandler() http.HandlerFunc {
 	}
 }
 
-// Обрабтчик запроса на обнолвение метрик
+// UpdateHandler - обновляет или создает метрику по query параметрам.
 func (h *Handler) UpdateHandler() http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		// Проверка на заполненность имени метрики
@@ -111,6 +114,7 @@ func (h *Handler) UpdateHandler() http.HandlerFunc {
 	}
 }
 
+// UpdateHandlerJSON - обновляет или создает метрику по body запроса.
 func (h *Handler) UpdateHandlerJSON() http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		if req.Header.Get("Content-Type") != "application/json" {
@@ -140,7 +144,7 @@ func (h *Handler) UpdateHandlerJSON() http.HandlerFunc {
 	}
 }
 
-// Обработчик запроса на выдачу значения конкретной метрики
+// GetMetricHandler возвращает значение метрики по query параметрам.
 func (h *Handler) GetMetricHandler() http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		metricType := chi.URLParam(req, "type")
@@ -177,6 +181,7 @@ func (h *Handler) GetMetricHandler() http.HandlerFunc {
 	}
 }
 
+// GetMetricHandler возвращает значение метрики по body запросапо body запроса..
 func (h *Handler) GetMetricHandlerJSON() http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		res.Header().Set("Content-Type", "application/json")
@@ -232,6 +237,7 @@ func (h *Handler) GetMetricHandlerJSON() http.HandlerFunc {
 	}
 }
 
+// PingHandler проверяет подключение с БД
 func (h *Handler) PingHandler() http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		ctx, cancel := context.WithTimeout(req.Context(), 1*time.Second)
@@ -252,6 +258,7 @@ func (h *Handler) PingHandler() http.HandlerFunc {
 	}
 }
 
+// UpdateBatchHandler - обновляет или создает метрики batch запросов.
 func (h *Handler) UpdateBatchHandler() http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		if req.Header.Get("Content-Type") != "application/json" {

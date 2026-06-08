@@ -9,11 +9,13 @@ import (
 	"github.com/onbehalfofhim/metric-alert/internal/models"
 )
 
+// FileObserver - запись событий аудита в файл.
 type FileObserver struct {
 	path   string
 	logger *logger.Logger
 }
 
+// NewFileObserver - создает экземпляр наблюдателя для аудита.
 func NewFileObserver(filePath string, logger *logger.Logger) *FileObserver {
 	return &FileObserver{
 		path:   filePath,
@@ -21,10 +23,12 @@ func NewFileObserver(filePath string, logger *logger.Logger) *FileObserver {
 	}
 }
 
+// GetID - получение идентификатора наблюдателя.
 func (o *FileObserver) GetID() string {
 	return fmt.Sprintf("file-observer-%s", o.path)
 }
 
+// Notify - реагирование наблюдателя на событие аудита.
 func (o *FileObserver) Notify(message models.AuditMessage) {
 	if err := o.writeToFile(message); err != nil {
 		o.logger.Info("failed to write audit message to file", err)

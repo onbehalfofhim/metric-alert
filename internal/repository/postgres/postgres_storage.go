@@ -3,18 +3,11 @@ package postgres
 import (
 	"context"
 	"database/sql"
-	"time"
 
 	"github.com/onbehalfofhim/metric-alert/internal/models"
 	"github.com/onbehalfofhim/metric-alert/internal/repository"
 	"github.com/onbehalfofhim/metric-alert/internal/retry"
 )
-
-var retryDelays = []time.Duration{
-	1 * time.Second,
-	3 * time.Second,
-	5 * time.Second,
-}
 
 type PostgresStorage struct {
 	db *sql.DB

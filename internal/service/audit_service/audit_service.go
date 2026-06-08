@@ -6,12 +6,13 @@ import (
 	"github.com/onbehalfofhim/metric-alert/internal/models"
 )
 
-// AuditService - управляет наблюдателями
+// AuditService - управляет наблюдателями.
 type AuditService struct {
 	observers map[string]audit.AuditObserver
 	logger    *logger.Logger
 }
 
+// NewAuditService - создает сервис аудита.
 func NewAuditService(logger *logger.Logger) *AuditService {
 	return &AuditService{
 		observers: map[string]audit.AuditObserver{},
@@ -19,6 +20,7 @@ func NewAuditService(logger *logger.Logger) *AuditService {
 	}
 }
 
+// Notify - оповещает наблюдателеь о событии аудита.
 func (s *AuditService) Notify(message models.AuditMessage) {
 	s.logger.Info("notifying all observers", "observers_count", len(s.observers))
 
@@ -28,6 +30,7 @@ func (s *AuditService) Notify(message models.AuditMessage) {
 	}
 }
 
+// Register - регистрация наблюдателя.
 func (s *AuditService) Register(o audit.AuditObserver) {
 	if s.observers == nil {
 		s.observers = make(map[string]audit.AuditObserver)
@@ -38,6 +41,7 @@ func (s *AuditService) Register(o audit.AuditObserver) {
 	s.logger.Info("attaching observer", "observer_id", o.GetID())
 }
 
+// Deregister - удаление наблюдателя из списка наблюдателей.
 func (s *AuditService) Deregister(o audit.AuditObserver) {
 	delete(s.observers, o.GetID())
 	s.logger.Info("detaching observer", "observer_id", o.GetID())

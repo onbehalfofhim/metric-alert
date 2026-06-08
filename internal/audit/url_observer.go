@@ -11,12 +11,14 @@ import (
 	"github.com/onbehalfofhim/metric-alert/internal/models"
 )
 
+// URLObserver - регистация событий аудита через API.
 type URLObserver struct {
 	url    string
 	logger *logger.Logger
 	client *http.Client
 }
 
+// NewURLObserver - создает экземпляр наблюдателя для аудита.
 func NewURLObserver(url string, logger *logger.Logger) *URLObserver {
 	return &URLObserver{
 		url:    url,
@@ -27,10 +29,12 @@ func NewURLObserver(url string, logger *logger.Logger) *URLObserver {
 	}
 }
 
+// GetID - получение идентификатора наблюдателя.
 func (o *URLObserver) GetID() string {
 	return fmt.Sprintf("audit-observer-%s", o.url)
 }
 
+// Notify - реагирование наблюдателя на событие аудита.
 func (o *URLObserver) Notify(message models.AuditMessage) {
 	if err := o.sendToURL(message); err != nil {
 		o.logger.Info("failed to send audit message to URL", err)

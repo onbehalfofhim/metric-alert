@@ -7,6 +7,7 @@ import (
 	"github.com/onbehalfofhim/metric-alert/internal/models"
 )
 
+// MetricHandler описывает сервис взаимодействия с хранилищем.
 type MetricHandler interface {
 	UpdateMetric(mType, name, value string) error
 	UpdateMetricJSON(metric models.Metric) error
@@ -21,6 +22,7 @@ type MetricHandler interface {
 	Ping(ctx context.Context) error
 }
 
+// Auditer описвает сервис аудита.
 type Auditer interface {
 	Notify(message models.AuditMessage)
 

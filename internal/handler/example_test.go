@@ -1,0 +1,36 @@
+package handler
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
+
+	"github.com/onbehalfofhim/metric-alert/internal/models"
+	"github.com/onbehalfofhim/metric-alert/internal/repository/inmemory"
+	"github.com/onbehalfofhim/metric-alert/internal/service/metric"
+)
+
+func ExampleHandler_UpdateHandlerJSON() {
+	storage := inmemory.NewMemStorage()
+	service := metric.NewMetricService(storage)
+
+	h := New(service, nil, nil)
+
+	val := 42.0
+	body, _ := json.Marshal(models.Metric{
+		ID:    "cpu",
+		MType: models.Gauge,
+		Value: &val,
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/update", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+
+	res := httptest.NewRecorder()
+	h.UpdateHandlerJSON().ServeHTTP(res, req)
+
+	fmt.Println(res.Code)
+	// Output: 200
+}
