@@ -46,3 +46,7 @@ func (s *AuditService) Deregister(o audit.AuditObserver) {
 	delete(s.observers, o.GetID())
 	s.logger.Info("detaching observer", "observer_id", o.GetID())
 }
+
+func (s *AuditService) ObserversAmount() int {
+	return len(s.observers)
+}

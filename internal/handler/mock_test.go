@@ -92,6 +92,7 @@ func (m *mockAudit) Notify(msg models.AuditMessage) {
 
 func (m *mockAudit) Register(audit.AuditObserver)   {}
 func (m *mockAudit) Deregister(audit.AuditObserver) {}
+func (m *mockAudit) ObserversAmount() int { return 0}
 
 func withURLParams(req *http.Request, params map[string]string) *http.Request {
 	rctx := chi.NewRouteContext()

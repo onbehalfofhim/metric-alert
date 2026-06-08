@@ -28,4 +28,6 @@ type Auditer interface {
 
 	Register(o audit.AuditObserver)
 	Deregister(o audit.AuditObserver)
+
+	ObserversAmount() int
 }

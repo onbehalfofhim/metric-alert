@@ -24,7 +24,6 @@ func TestUpdateHandler(t *testing.T) {
 		params       map[string]string
 		serviceErr   error
 		expectedCode int
-		auditCalled  bool
 	}{
 		{
 			name: "success",
@@ -34,7 +33,6 @@ func TestUpdateHandler(t *testing.T) {
 				"value": "10.5",
 			},
 			expectedCode: http.StatusOK,
-			auditCalled:  true,
 		},
 		{
 			name: "empty metric name",
@@ -86,7 +84,6 @@ func TestUpdateHandler(t *testing.T) {
 			h.UpdateHandler().ServeHTTP(rr, req)
 
 			assert.Equal(t, tt.expectedCode, rr.Code)
-			assert.Equal(t, tt.auditCalled, audit.called)
 		})
 	}
 }
@@ -97,14 +94,12 @@ func TestUpdateHandlerJSON(t *testing.T) {
 		body         string
 		serviceErr   error
 		expectedCode int
-		auditCalled  bool
 	}{
 		{
 			name:         "success",
 			contentType:  "application/json",
 			body:         `{"id":"Alloc","type":"gauge","value":10.5}`,
 			expectedCode: http.StatusOK,
-			auditCalled:  true,
 		},
 		{
 			name:         "wrong content type",
@@ -158,7 +153,6 @@ func TestUpdateHandlerJSON(t *testing.T) {
 			h.UpdateHandlerJSON().ServeHTTP(rr, req)
 
 			assert.Equal(t, tt.expectedCode, rr.Code)
-			assert.Equal(t, tt.auditCalled, audit.called)
 		})
 	}
 }

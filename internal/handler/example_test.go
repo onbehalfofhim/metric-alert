@@ -7,8 +7,10 @@ import (
 	"net/http"
 	"net/http/httptest"
 
+	"github.com/onbehalfofhim/metric-alert/internal/logger"
 	"github.com/onbehalfofhim/metric-alert/internal/models"
 	"github.com/onbehalfofhim/metric-alert/internal/repository/inmemory"
+	"github.com/onbehalfofhim/metric-alert/internal/service/audit_service"
 	"github.com/onbehalfofhim/metric-alert/internal/service/metric"
 )
 
@@ -16,7 +18,10 @@ func ExampleHandler_UpdateHandlerJSON() {
 	storage := inmemory.NewMemStorage()
 	service := metric.NewMetricService(storage)
 
-	h := New(service, nil, nil)
+	logger := logger.NewLogger()
+	auditer := audit_service.NewAuditService(logger)
+
+	h := New(service, logger, auditer)
 
 	val := 42.0
 	body, _ := json.Marshal(models.Metric{
@@ -31,6 +36,9 @@ func ExampleHandler_UpdateHandlerJSON() {
 	res := httptest.NewRecorder()
 	h.UpdateHandlerJSON().ServeHTTP(res, req)
 
-	fmt.Println(res.Code)
-	// Output: 200
+	v, _ := storage.GetGauge("cpu")
+	fmt.Printf("%.0f\n", v)
+
+	// Output:
+	// 42
 }

@@ -289,24 +289,26 @@ func (h *Handler) notifyAudit(ip string, name string, metrics []models.Metric) {
 		h.logger.Info("Cant't send notification: did't get name of metric(s)")
 	}
 
-	var auditMessage models.AuditMessage
-	if name != "" {
-		auditMessage = models.AuditMessage{
-			TS:      time.Now().Unix(),
-			Metrics: []string{name},
-			IPAddr:  ip,
-		}
-	} else {
-		auditMessage = models.AuditMessage{
-			TS:      time.Now().Unix(),
-			Metrics: make([]string, len(metrics)),
-			IPAddr:  ip,
+	if h.audit.ObserversAmount() > 0 {
+		var auditMessage models.AuditMessage
+		if name != "" {
+			auditMessage = models.AuditMessage{
+				TS:      time.Now().Unix(),
+				Metrics: []string{name},
+				IPAddr:  ip,
+			}
+		} else {
+			auditMessage = models.AuditMessage{
+				TS:      time.Now().Unix(),
+				Metrics: make([]string, len(metrics)),
+				IPAddr:  ip,
+			}
+
+			for i, metric := range metrics {
+				auditMessage.Metrics[i] = metric.ID
+			}
 		}
 
-		for i, metric := range metrics {
-			auditMessage.Metrics[i] = metric.ID
-		}
+		h.audit.Notify(auditMessage)
 	}
-
-	h.audit.Notify(auditMessage)
 }
