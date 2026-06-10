@@ -110,7 +110,7 @@ func (s *MetricsService) GetListGauges() map[string]float64 {
 	return s.storage.GetListGauges()
 }
 
-// GetListCounters возвращает список gauge-метрик.
+// GetListCounters возвращает список counter-метрик.
 func (s *MetricsService) GetListCounters() map[string]int64 {
 	return s.storage.GetListCounters()
 }

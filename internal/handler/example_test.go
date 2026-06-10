@@ -10,7 +10,7 @@ import (
 	"github.com/onbehalfofhim/metric-alert/internal/logger"
 	"github.com/onbehalfofhim/metric-alert/internal/models"
 	"github.com/onbehalfofhim/metric-alert/internal/repository/inmemory"
-	"github.com/onbehalfofhim/metric-alert/internal/service/audit_service"
+	"github.com/onbehalfofhim/metric-alert/internal/service/auditservice"
 	"github.com/onbehalfofhim/metric-alert/internal/service/metric"
 )
 
@@ -19,7 +19,7 @@ func ExampleHandler_UpdateHandlerJSON() {
 	service := metric.NewMetricService(storage)
 
 	logger := logger.NewLogger()
-	auditer := audit_service.NewAuditService(logger)
+	auditer := auditservice.NewAuditService(logger)
 
 	h := New(service, logger, auditer)
 

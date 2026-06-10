@@ -1,4 +1,4 @@
-package audit_service
+package auditservice
 
 import (
 	"github.com/onbehalfofhim/metric-alert/internal/audit"

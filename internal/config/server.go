@@ -41,7 +41,7 @@ func ParseServerFlags() (ServerConfig, error) {
 	flag.StringVar(&cfg.Key, "k", "", "signing key")
 
 	flag.StringVar(&cfg.AuditFile, "audit-file", "", "file path to write audit")
-	flag.StringVar(&cfg.AuditFile, "audit-url", "", "addres to send audit")
+	flag.StringVar(&cfg.AuditURL, "audit-url", "", "addres to send audit")
 
 	// парсим переданные серверу аргументы командной строки в зарегистрированные переменные
 	flag.Parse()
