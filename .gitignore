@@ -25,4 +25,7 @@ vendor/
 .vscode
 
 # Backup file
-cmd/server/metrics.txt
+*.txt
+
+# env
+*.env

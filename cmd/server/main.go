@@ -3,10 +3,14 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	"log"
 	"net/http"
+
+	_ "net/http/pprof"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 
+	"github.com/onbehalfofhim/metric-alert/internal/audit"
 	"github.com/onbehalfofhim/metric-alert/internal/config"
 	"github.com/onbehalfofhim/metric-alert/internal/handler"
 	"github.com/onbehalfofhim/metric-alert/internal/logger"
@@ -15,6 +19,8 @@ import (
 	"github.com/onbehalfofhim/metric-alert/internal/repository/inmemory"
 	"github.com/onbehalfofhim/metric-alert/internal/repository/postgres"
 	"github.com/onbehalfofhim/metric-alert/internal/service"
+	"github.com/onbehalfofhim/metric-alert/internal/service/auditservice"
+	"github.com/onbehalfofhim/metric-alert/internal/service/metric"
 	"github.com/onbehalfofhim/metric-alert/migrations"
 )
 
@@ -25,6 +31,10 @@ func main() {
 	if error != nil {
 		logger.Error("Error in parse flags and variables", "error", error)
 	}
+
+	go func() {
+		log.Println(http.ListenAndServe("localhost:6060", nil))
+	}()
 
 	if err := run(cfg, logger); err != nil {
 		logger.Error("Error in run server", "error", err)
@@ -48,6 +58,7 @@ func run(cfg config.ServerConfig, logger *logger.Logger) error {
 		}
 
 		storage = postgres.New(db)
+		logger.Info("storage type: Postgres")
 
 	} else {
 		storage = inmemory.NewMemStorage()
@@ -67,10 +78,26 @@ func run(cfg config.ServerConfig, logger *logger.Logger) error {
 				return fmt.Errorf("can't load from file: %w", err)
 			}
 		}
+		logger.Info("storage type: Inmemory", "reestore from file", cfg.Restore, "file", cfg.FilePath)
 	}
 
-	service := service.NewMetricService(storage)
-	handler := handler.New(service, logger)
+	var auditService service.Auditer
+
+	if cfg.AuditFile != "" || cfg.AuditURL != "" {
+		auditService = auditservice.NewAuditService(logger)
+		if cfg.AuditFile != "" {
+			auditService.Register(audit.NewFileObserver(cfg.AuditFile, logger))
+		}
+		if cfg.AuditURL != "" {
+			auditService.Register(audit.NewURLObserver(cfg.AuditURL, logger))
+		}
+	} else {
+		auditService = &auditservice.AuditService{}
+		logger.Info("audit service is not enabled, skipping notification")
+	}
+
+	service := metric.NewMetricService(storage)
+	handler := handler.New(service, logger, auditService)
 
 	return http.ListenAndServe(cfg.RunAddr, handler.Route(logger, cfg.Key))
 }

@@ -4,10 +4,13 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+
 	"github.com/onbehalfofhim/metric-alert/internal/logger"
 	"github.com/onbehalfofhim/metric-alert/internal/middleware"
 )
 
+// Route создает и настраивает HTTP-роутер chi с middleware и маршрутами OpenAPI.
+// key используется для валидации/добавления хеша ответа.
 func (h *Handler) Route(log *logger.Logger, key string) http.Handler {
 	r := chi.NewRouter()
 	r.Use(middleware.RequestLogger(log))

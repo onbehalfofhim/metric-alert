@@ -1,11 +1,11 @@
-package service_test
+package metric
 
 import (
 	"testing"
 
-	"github.com/onbehalfofhim/metric-alert/internal/repository/inmemory"
-	"github.com/onbehalfofhim/metric-alert/internal/service"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/onbehalfofhim/metric-alert/internal/repository/inmemory"
 )
 
 func TestMetricsService_UpdateMetric(t *testing.T) {
@@ -25,7 +25,7 @@ func TestMetricsService_UpdateMetric(t *testing.T) {
 	}
 
 	storage := inmemory.NewMemStorage()
-	s := service.NewMetricService(storage)
+	s := NewMetricService(storage)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -55,7 +55,7 @@ func TestMetricsService_GetMetric(t *testing.T) {
 	}
 
 	storage := inmemory.NewMemStorage()
-	s := service.NewMetricService(storage)
+	s := NewMetricService(storage)
 
 	s.UpdateMetric("counter", "test", "10")
 	s.UpdateMetric("gauge", "alloc", "7.6")

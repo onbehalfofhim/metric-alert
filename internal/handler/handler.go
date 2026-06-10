@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+
 	"github.com/onbehalfofhim/metric-alert/internal/logger"
 	"github.com/onbehalfofhim/metric-alert/internal/models"
 	"github.com/onbehalfofhim/metric-alert/internal/repository"
@@ -16,15 +17,20 @@ import (
 	"github.com/onbehalfofhim/metric-alert/internal/templates"
 )
 
+// MetricHandler обслуживает HTTP-запросы практического трека метрик.
+// Содержит ссылки на сервис метрик, логгер и аудит.
 type Handler struct {
-	service *service.MetricsService
+	service service.MetricHandler
 	logger  *logger.Logger
+	audit   service.Auditer
 }
 
-func New(service *service.MetricsService, logger *logger.Logger) *Handler {
+// New конструирует экземпляр обработчика метрик.
+func New(service service.MetricHandler, logger *logger.Logger, audit service.Auditer) *Handler {
 	return &Handler{
 		service: service,
 		logger:  logger,
+		audit:   audit,
 	}
 }
 
@@ -47,7 +53,7 @@ func mapToMetricView[T any](m map[string]T, format func(T) string) []templates.M
 	return result
 }
 
-// Обработчик корневого запроса
+// RootHandler отдает html с табличным представлением всех метрик
 func (h *Handler) RootHandler() http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		//форматируем метрики типа gauge
@@ -86,7 +92,7 @@ func (h *Handler) RootHandler() http.HandlerFunc {
 	}
 }
 
-// Обрабтчик запроса на обнолвение метрик
+// UpdateHandler - обновляет или создает метрику по query параметрам.
 func (h *Handler) UpdateHandler() http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		// Проверка на заполненность имени метрики
@@ -104,9 +110,11 @@ func (h *Handler) UpdateHandler() http.HandlerFunc {
 		}
 
 		res.WriteHeader(http.StatusOK)
+		h.notifyAudit(req.RemoteAddr, metricName, nil)
 	}
 }
 
+// UpdateHandlerJSON - обновляет или создает метрику по body запроса.
 func (h *Handler) UpdateHandlerJSON() http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		if req.Header.Get("Content-Type") != "application/json" {
@@ -132,10 +140,11 @@ func (h *Handler) UpdateHandlerJSON() http.HandlerFunc {
 		}
 
 		res.WriteHeader(http.StatusOK)
+		h.notifyAudit(req.RemoteAddr, m.ID, nil)
 	}
 }
 
-// Обработчик запроса на выдачу значения конкретной метрики
+// GetMetricHandler возвращает значение метрики по query параметрам.
 func (h *Handler) GetMetricHandler() http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		metricType := chi.URLParam(req, "type")
@@ -172,6 +181,7 @@ func (h *Handler) GetMetricHandler() http.HandlerFunc {
 	}
 }
 
+// GetMetricHandler возвращает значение метрики по body запросапо body запроса..
 func (h *Handler) GetMetricHandlerJSON() http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		res.Header().Set("Content-Type", "application/json")
@@ -218,15 +228,16 @@ func (h *Handler) GetMetricHandlerJSON() http.HandlerFunc {
 			return
 		}
 
+		res.WriteHeader(http.StatusOK)
+
 		enc := json.NewEncoder(res)
 		if err := enc.Encode(resp); err != nil {
 			http.Error(res, "cannot encode response body", http.StatusInternalServerError)
 		}
-
-		res.WriteHeader(http.StatusOK)
 	}
 }
 
+// PingHandler проверяет подключение с БД
 func (h *Handler) PingHandler() http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		ctx, cancel := context.WithTimeout(req.Context(), 1*time.Second)
@@ -247,6 +258,7 @@ func (h *Handler) PingHandler() http.HandlerFunc {
 	}
 }
 
+// UpdateBatchHandler - обновляет или создает метрики batch запросов.
 func (h *Handler) UpdateBatchHandler() http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		if req.Header.Get("Content-Type") != "application/json" {
@@ -267,5 +279,36 @@ func (h *Handler) UpdateBatchHandler() http.HandlerFunc {
 		}
 
 		res.WriteHeader(http.StatusOK)
+
+		h.notifyAudit(req.RemoteAddr, "", metrics)
+	}
+}
+
+func (h *Handler) notifyAudit(ip string, name string, metrics []models.Metric) {
+	if name == "" && metrics == nil {
+		h.logger.Info("Cant't send notification: did't get name of metric(s)")
+	}
+
+	if h.audit.ObserversAmount() > 0 {
+		var auditMessage models.AuditMessage
+		if name != "" {
+			auditMessage = models.AuditMessage{
+				TS:      time.Now().Unix(),
+				Metrics: []string{name},
+				IPAddr:  ip,
+			}
+		} else {
+			auditMessage = models.AuditMessage{
+				TS:      time.Now().Unix(),
+				Metrics: make([]string, len(metrics)),
+				IPAddr:  ip,
+			}
+
+			for i, metric := range metrics {
+				auditMessage.Metrics[i] = metric.ID
+			}
+		}
+
+		h.audit.Notify(auditMessage)
 	}
 }

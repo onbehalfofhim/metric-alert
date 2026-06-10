@@ -3,18 +3,11 @@ package postgres
 import (
 	"context"
 	"database/sql"
-	"time"
 
 	"github.com/onbehalfofhim/metric-alert/internal/models"
 	"github.com/onbehalfofhim/metric-alert/internal/repository"
 	"github.com/onbehalfofhim/metric-alert/internal/retry"
 )
-
-var retryDelays = []time.Duration{
-	1 * time.Second,
-	3 * time.Second,
-	5 * time.Second,
-}
 
 type PostgresStorage struct {
 	db *sql.DB
@@ -158,7 +151,7 @@ func (p *PostgresStorage) UpdateBatchTx(ctx context.Context, metrics []models.Me
 					VALUES ($1, $2)
 					ON CONFLICT (name)
 					DO UPDATE SET value = $2
-				`, m.ID, m.Value)
+				`, m.ID, *m.Value)
 			if err != nil {
 				return err
 			}
@@ -168,7 +161,7 @@ func (p *PostgresStorage) UpdateBatchTx(ctx context.Context, metrics []models.Me
 					VALUES ($1, $2)
 					ON CONFLICT (name)
 					DO UPDATE SET value = counters.value + $2
-				`, m.ID, m.Delta)
+				`, m.ID, *m.Delta)
 			if err != nil {
 				return err
 			}
