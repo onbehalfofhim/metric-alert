@@ -57,8 +57,8 @@ func TestMetricsService_GetMetric(t *testing.T) {
 	storage := inmemory.NewMemStorage()
 	s := NewMetricService(storage)
 
-	s.UpdateMetric("counter", "test", "10")
-	s.UpdateMetric("gauge", "alloc", "7.6")
+	_ = s.UpdateMetric("counter", "test", "10")
+	_ = s.UpdateMetric("gauge", "alloc", "7.6")
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

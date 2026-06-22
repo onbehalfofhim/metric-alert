@@ -106,13 +106,13 @@ func (s *MemStorage) UpdateBatch(ctx context.Context, metrics []models.Metric) e
 			if metric.Value == nil {
 				return errors.New("unknown metric value")
 			}
-			s.UpdateGauge(metric.ID, *metric.Value)
+			return s.UpdateGauge(metric.ID, *metric.Value)
 
 		case "counter":
 			if metric.Delta == nil {
 				return errors.New("unknown metric value")
 			}
-			s.UpdateCounter(metric.ID, *metric.Delta)
+			return s.UpdateCounter(metric.ID, *metric.Delta)
 
 		default:
 			return errors.New("unknown metric type")

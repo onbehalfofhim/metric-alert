@@ -186,7 +186,10 @@ func TestDoRequest_GzipBody(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gz, err := gzip.NewReader(r.Body)
 		require.NoError(t, err)
-		defer gz.Close()
+		
+		defer func() {
+			_ = gz.Close()
+		}()
 
 		var body map[string]string
 		err = json.NewDecoder(gz).Decode(&body)

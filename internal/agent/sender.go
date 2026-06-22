@@ -46,7 +46,9 @@ func (s *Sender) Send(metrics []models.Metric) error {
 		if resp.StatusCode == http.StatusNotFound || resp.StatusCode == http.StatusBadRequest {
 			return fmt.Errorf("bad request: %d", resp.StatusCode)
 		}
-		resp.Body.Close()
+		defer func() {
+			_ = resp.Body.Close() //nolint:errcheck
+		}()
 	}
 
 	return nil
@@ -82,7 +84,9 @@ func (s *Sender) doRequest(body any, endpoint string) error {
 	if err != nil {
 		return fmt.Errorf("can't send a post-request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close() //nolint:errcheck
+	}()
 
 	if resp.StatusCode == http.StatusNotFound || resp.StatusCode == http.StatusBadRequest {
 		return fmt.Errorf("%w: %d", retry.ErrBadRequest, resp.StatusCode)
