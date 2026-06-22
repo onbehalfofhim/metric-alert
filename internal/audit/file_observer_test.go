@@ -91,9 +91,9 @@ func TestWriteToFile_Append(t *testing.T) {
 
 	file, err := os.Open(path)
 	require.NoError(t, err)
-	defer func() {
-		_ = file.Close()
-	}()
+	
+	err = file.Close()
+	require.NoError(t, err)
 
 	decoder := json.NewDecoder(file)
 	var messages []models.AuditMessage
