@@ -10,6 +10,5 @@ func TestAnalyzer(t *testing.T) {
 	analysistest.Run(t, testdata, Analyzer,
 		"mainpkg",
 		"okpkg",
-		// "testmain",
 	)
 }
