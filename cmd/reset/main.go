@@ -153,29 +153,19 @@ func generateReset(out *bytes.Buffer, structName string, st *ast.StructType, inf
 			)
 
 		case *types.Pointer:
-			fmt.Fprintf(out,
-				"\tif s.%s != nil {\n",
-				name,
-			)
-
-			fmt.Fprintf(out,
-				"\t\tif r, ok := any(s.%s).(interface{ Reset() }); ok {\n",
-				name,
-			)
-			fmt.Fprintf(out, "\t\t\tr.Reset()\n")
-			fmt.Fprintf(out, "\t\t} else {\n")
-
 			ptr := t.(*types.Pointer)
+			fmt.Fprintf(out, "\tif s.%s != nil {\n", name)
 
-			fmt.Fprintf(out,
-				"\t\t\t*s.%s = %s\n",
-				name,
-				zeroValue(ptr.Elem()),
-			)
-
-			fmt.Fprintf(out, "\t\t}\n")
+			if hasResetMethod(ptr.Elem()) {
+				fmt.Fprintf(out, "\t\ts.%s.Reset()\n", name)
+			} else {
+				fmt.Fprintf(out,
+					"\t\t*s.%s = %s\n",
+					name,
+					zeroValue(ptr.Elem()),
+				)
+			}
 			fmt.Fprintf(out, "\t}\n")
-
 		default:
 			if hasResetMethod(t) {
 				fmt.Fprintf(out,

@@ -9,18 +9,10 @@ func (s *Metric) Reset() {
 	s.ID = ""
 	s.MType = ""
 	if s.Delta != nil {
-		if r, ok := any(s.Delta).(interface{ Reset() }); ok {
-			r.Reset()
-		} else {
-			*s.Delta = 0
-		}
+		*s.Delta = 0
 	}
 	if s.Value != nil {
-		if r, ok := any(s.Value).(interface{ Reset() }); ok {
-			r.Reset()
-		} else {
-			*s.Value = 0
-		}
+		*s.Value = 0
 	}
 	s.Hash = ""
 }
