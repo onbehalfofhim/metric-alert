@@ -106,7 +106,7 @@ func TestMemStorage_GetGauge(t *testing.T) {
 	}
 
 	s := NewMemStorage()
-	s.UpdateGauge("test", 7.6)
+	_ = s.UpdateGauge("test", 7.6)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -131,7 +131,7 @@ func TestMemStorage_GetCounter(t *testing.T) {
 	}
 
 	s := NewMemStorage()
-	s.UpdateCounter("test", 7)
+	_ = s.UpdateCounter("test", 7)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

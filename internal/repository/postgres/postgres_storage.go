@@ -57,13 +57,18 @@ func (p *PostgresStorage) GetListGauges() map[string]float64 {
 	if err != nil {
 		return map[string]float64{}
 	}
-	defer rows.Close()
+
+	defer func() {
+		_ = rows.Close()
+	}()
 
 	res := make(map[string]float64)
 	for rows.Next() {
 		var k string
 		var v float64
-		rows.Scan(&k, &v)
+		if err := rows.Scan(&k, &v); err != nil {
+			return map[string]float64{}
+		}
 		res[k] = v
 	}
 
@@ -111,13 +116,18 @@ func (p *PostgresStorage) GetListCounters() map[string]int64 {
 	if err != nil {
 		return map[string]int64{}
 	}
-	defer rows.Close()
+
+	defer func() {
+		_ = rows.Close()
+	}()
 
 	res := make(map[string]int64)
 	for rows.Next() {
 		var k string
 		var v int64
-		rows.Scan(&k, &v)
+		if err := rows.Scan(&k, &v); err != nil {
+			return map[string]int64{}
+		}
 		res[k] = v
 	}
 
@@ -140,7 +150,10 @@ func (p *PostgresStorage) UpdateBatchTx(ctx context.Context, metrics []models.Me
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
+
+	defer func() {
+		_ = tx.Rollback()
+	}()
 
 	for _, m := range metrics {
 		// все изменения записываются в транзакцию

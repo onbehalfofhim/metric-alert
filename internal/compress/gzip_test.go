@@ -130,7 +130,9 @@ func TestCompressWriter_Write(t *testing.T) {
 
 	gz, err := gzip.NewReader(bytes.NewReader(rec.Body.Bytes()))
 	require.NoError(t, err)
-	defer gz.Close()
+
+	err = gz.Close()
+	require.NoError(t, err)
 
 	body, err := io.ReadAll(gz)
 	require.NoError(t, err)

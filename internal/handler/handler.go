@@ -176,8 +176,10 @@ func (h *Handler) GetMetricHandler() http.HandlerFunc {
 			return
 		}
 		res.WriteHeader(http.StatusOK)
-		res.Write([]byte(value))
-
+		_, err = res.Write([]byte(value))
+		if err != nil {
+			h.logger.Error("failed to write response: %v", err)
+		}
 	}
 }
 
