@@ -42,7 +42,11 @@ func (o *FileObserver) writeToFile(message models.AuditMessage) error {
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer func() {
+		if err := file.Close(); err != nil {
+			o.logger.Info("close file: %v", err)
+		}
+	}()
 
 	encoder := json.NewEncoder(file)
 	if err := encoder.Encode(message); err != nil {

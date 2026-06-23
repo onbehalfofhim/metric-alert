@@ -16,7 +16,7 @@ func TestGzipMiddleware_CompressResponse(t *testing.T) {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"ok":true}`))
+		_, _ = w.Write([]byte(`{"ok":true}`)) //nolint:errcheck
 	})
 
 	ts := httptest.NewServer(GzipMiddleware(handler))
@@ -28,13 +28,17 @@ func TestGzipMiddleware_CompressResponse(t *testing.T) {
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	require.NoError(t, err)
-	defer resp.Body.Close()
+
+	err = resp.Body.Close()
+	require.NoError(t, err)
 
 	assert.Equal(t, "gzip", resp.Header.Get("Content-Encoding"))
 
 	gr, err := gzip.NewReader(resp.Body)
 	require.NoError(t, err)
-	defer gr.Close()
+
+	err = gr.Close()
+	require.NoError(t, err)
 
 	body, _ := io.ReadAll(gr)
 	assert.JSONEq(t, `{"ok":true}`, string(body))
@@ -43,7 +47,7 @@ func TestGzipMiddleware_CompressResponse(t *testing.T) {
 func TestGzipMiddleware_SkipCompression(t *testing.T) {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain")
-		w.Write([]byte("hello"))
+		_, _ = w.Write([]byte("hello")) //nolint:errcheck
 	})
 
 	ts := httptest.NewServer(GzipMiddleware(handler))
@@ -54,7 +58,9 @@ func TestGzipMiddleware_SkipCompression(t *testing.T) {
 
 	resp, err := http.DefaultClient.Do(req)
 	require.NoError(t, err)
-	defer resp.Body.Close()
+
+	err = resp.Body.Close() //nolint:errcheck
+	require.NoError(t, err)
 
 	assert.Empty(t, resp.Header.Get("Content-Encoding"))
 
@@ -74,15 +80,20 @@ func TestGzipMiddleware_DecompressRequest(t *testing.T) {
 
 	var buf bytes.Buffer
 	gz := gzip.NewWriter(&buf)
-	gz.Write([]byte("test-data"))
-	gz.Close()
+	_, err := gz.Write([]byte("test-data"))
+	require.NoError(t, err)
+
+	err = gz.Close()
+	require.NoError(t, err)
 
 	req, _ := http.NewRequest(http.MethodPost, ts.URL, &buf)
 	req.Header.Set("Content-Encoding", "gzip")
 
 	resp, err := http.DefaultClient.Do(req)
 	require.NoError(t, err)
-	defer resp.Body.Close()
+
+	err = resp.Body.Close()
+	require.NoError(t, err)
 
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 }

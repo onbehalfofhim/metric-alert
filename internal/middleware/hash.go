@@ -26,7 +26,9 @@ func HashVerifier(key string) func(http.Handler) http.Handler {
 				return
 			}
 
-			r.Body.Close()
+			defer func() {
+				_ = r.Body.Close() //nolint:errcheck
+			}()
 
 			expectedHash := crypto.HashSHA256(body, key)
 
