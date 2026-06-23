@@ -29,8 +29,9 @@ func TestGzipMiddleware_CompressResponse(t *testing.T) {
 	resp, err := client.Do(req)
 	require.NoError(t, err)
 
-	err = resp.Body.Close()
-	require.NoError(t, err)
+	defer func() {
+		require.NoError(t, resp.Body.Close())
+	}()
 
 	assert.Equal(t, "gzip", resp.Header.Get("Content-Encoding"))
 
@@ -59,8 +60,10 @@ func TestGzipMiddleware_SkipCompression(t *testing.T) {
 	resp, err := http.DefaultClient.Do(req)
 	require.NoError(t, err)
 
-	err = resp.Body.Close() //nolint:errcheck
-	require.NoError(t, err)
+	//nolint:errcheck
+	defer func() {
+		require.NoError(t, resp.Body.Close())
+	}()
 
 	assert.Empty(t, resp.Header.Get("Content-Encoding"))
 
