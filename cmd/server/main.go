@@ -11,6 +11,7 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 
 	"github.com/onbehalfofhim/metric-alert/internal/audit"
+	"github.com/onbehalfofhim/metric-alert/internal/buildinfo"
 	"github.com/onbehalfofhim/metric-alert/internal/config"
 	"github.com/onbehalfofhim/metric-alert/internal/handler"
 	"github.com/onbehalfofhim/metric-alert/internal/logger"
@@ -31,6 +32,8 @@ func main() {
 	if error != nil {
 		logger.Error("Error in parse flags and variables", "error", error)
 	}
+
+	buildinfo.Print()
 
 	go func() {
 		log.Println(http.ListenAndServe("localhost:6060", nil))

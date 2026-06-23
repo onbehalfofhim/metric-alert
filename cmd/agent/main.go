@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/onbehalfofhim/metric-alert/internal/agent"
+	"github.com/onbehalfofhim/metric-alert/internal/buildinfo"
 	"github.com/onbehalfofhim/metric-alert/internal/config"
 	"github.com/onbehalfofhim/metric-alert/internal/logger"
 	"github.com/onbehalfofhim/metric-alert/internal/models"
@@ -21,6 +22,8 @@ func main() {
 	if err != nil {
 		logger.Error("failed to set environment variables", "error", err)
 	}
+
+	buildinfo.Print()
 
 	// создание сборщика метрик
 	collector := agent.NewCollector()
