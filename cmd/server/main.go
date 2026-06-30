@@ -11,6 +11,7 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 
 	"github.com/onbehalfofhim/metric-alert/internal/audit"
+	"github.com/onbehalfofhim/metric-alert/internal/buildinfo"
 	"github.com/onbehalfofhim/metric-alert/internal/config"
 	"github.com/onbehalfofhim/metric-alert/internal/handler"
 	"github.com/onbehalfofhim/metric-alert/internal/logger"
@@ -32,6 +33,8 @@ func main() {
 		logger.Error("Error in parse flags and variables", "error", error)
 	}
 
+	buildinfo.Print()
+
 	go func() {
 		log.Println(http.ListenAndServe("localhost:6060", nil))
 	}()
@@ -50,7 +53,9 @@ func run(cfg config.ServerConfig, logger *logger.Logger) error {
 			logger.Error("Error connect to data base", "error", err)
 			return fmt.Errorf("can't connect to DB: %w", err)
 		}
-		defer db.Close()
+		defer func() {
+			_ = db.Close()
+		}()
 
 		if err := migrations.ApplyMigrations(db, "file://migrations"); err != nil {
 			logger.Error("Error apply migrations", "error", err)
@@ -68,7 +73,9 @@ func run(cfg config.ServerConfig, logger *logger.Logger) error {
 			return fmt.Errorf("can't open file: %w", err)
 		}
 
-		defer fileStorage.Close()
+		defer func() {
+			_ = fileStorage.Close()
+		}()
 
 		fileStorage.RunBackup(cfg.StoreInterval)
 
