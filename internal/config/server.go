@@ -19,6 +19,7 @@ type ServerConfig struct {
 	Key              string        `env:"KEY"`
 	AuditFile        string        `env:"AUDIT_FILE"`
 	AuditURL         string        `env:"AUDIT_URL"`
+	CryptoKey        string        `env:"CRYPTO_KEY"`
 }
 
 // обработка аргументов командной строки
@@ -42,6 +43,8 @@ func ParseServerFlags() (ServerConfig, error) {
 
 	flag.StringVar(&cfg.AuditFile, "audit-file", "", "file path to write audit")
 	flag.StringVar(&cfg.AuditURL, "audit-url", "", "addres to send audit")
+
+	flag.StringVar(&cfg.CryptoKey, "crypto-key", "", "file path to private key for encryption")
 
 	// парсим переданные серверу аргументы командной строки в зарегистрированные переменные
 	flag.Parse()

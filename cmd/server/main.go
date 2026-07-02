@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/rsa"
 	"database/sql"
 	"fmt"
 	"log"
@@ -13,6 +14,7 @@ import (
 	"github.com/onbehalfofhim/metric-alert/internal/audit"
 	"github.com/onbehalfofhim/metric-alert/internal/buildinfo"
 	"github.com/onbehalfofhim/metric-alert/internal/config"
+	"github.com/onbehalfofhim/metric-alert/internal/crypto"
 	"github.com/onbehalfofhim/metric-alert/internal/handler"
 	"github.com/onbehalfofhim/metric-alert/internal/logger"
 	"github.com/onbehalfofhim/metric-alert/internal/repository"
@@ -106,5 +108,16 @@ func run(cfg config.ServerConfig, logger *logger.Logger) error {
 	service := metric.NewMetricService(storage)
 	handler := handler.New(service, logger, auditService)
 
-	return http.ListenAndServe(cfg.RunAddr, handler.Route(logger, cfg.Key))
+	// получение приватного ключа для дешифровки входящих запросов
+	var privateKey *rsa.PrivateKey
+	var err error
+	if cfg.CryptoKey != "" {
+		privateKey, err = crypto.LoadPrivateKey(cfg.CryptoKey)
+		if err != nil {
+			return fmt.Errorf("failed to load private key: %w", err)
+		}
+		logger.Info("private key loaded for decryption", "path", cfg.CryptoKey)
+	}
+
+	return http.ListenAndServe(cfg.RunAddr, handler.Route(logger, cfg.Key, privateKey))
 }

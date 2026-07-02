@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"crypto/rsa"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -11,9 +12,15 @@ import (
 
 // Route создает и настраивает HTTP-роутер chi с middleware и маршрутами OpenAPI.
 // key используется для валидации/добавления хеша ответа.
-func (h *Handler) Route(log *logger.Logger, key string) http.Handler {
+// privateKey используется для расшифровки зашифрованных запросов.
+func (h *Handler) Route(log *logger.Logger, key string, privateKey *rsa.PrivateKey) http.Handler {
 	r := chi.NewRouter()
 	r.Use(middleware.RequestLogger(log))
+
+	// расшифровка входящего запроса
+	if privateKey != nil {
+		r.Use(middleware.DecryptRSA(privateKey))
+	}
 
 	// проверка входящего тела
 	if key != "" {

@@ -3,6 +3,7 @@ package agent
 import (
 	"bytes"
 	"compress/gzip"
+	"crypto/rsa"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -14,16 +15,18 @@ import (
 )
 
 type Sender struct {
-	Client *http.Client
-	URL    string
-	key    string
+	Client    *http.Client
+	URL       string
+	key       string
+	publicKey *rsa.PublicKey
 }
 
-func NewSender(url, key string) *Sender {
+func NewSender(url, key string, publicKey *rsa.PublicKey) *Sender {
 	return &Sender{
-		URL:    url,
-		Client: &http.Client{},
-		key:    key,
+		URL:       url,
+		Client:    &http.Client{},
+		key:       key,
+		publicKey: publicKey,
 	}
 }
 
@@ -66,7 +69,18 @@ func (s *Sender) doRequest(body any, endpoint string) error {
 		return fmt.Errorf("can't close gzip: %w", err)
 	}
 
-	req, err := http.NewRequest(http.MethodPost, s.URL+endpoint, buf)
+	payload := buf.Bytes()
+
+	// Шифрование
+	if s.publicKey != nil {
+		encrypted, err := crypto.EncryptRSA(payload, s.publicKey)
+		if err != nil {
+			return fmt.Errorf("can't encrypt request body: %w", err)
+		}
+		payload = encrypted
+	}
+
+	req, err := http.NewRequest(http.MethodPost, s.URL+endpoint, bytes.NewReader(payload))
 	if err != nil {
 		return fmt.Errorf("can't create request: %w", err)
 	}
@@ -74,6 +88,11 @@ func (s *Sender) doRequest(body any, endpoint string) error {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Content-Encoding", "gzip")
 	req.Header.Set("Accept-Encoding", "gzip")
+
+	// чтобы сервер понял, что тело зашифровано
+	if s.publicKey != nil {
+		req.Header.Set("X-Encrypted", "rsa")
+	}
 
 	if s.key != "" {
 		hash := crypto.HashSHA256(buf.Bytes(), s.key)

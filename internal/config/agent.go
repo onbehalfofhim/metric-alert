@@ -14,6 +14,7 @@ type AgentConfig struct {
 	ReportInterval int    `env:"POLL_INTERVAL"`
 	Key            string `env:"KEY"`
 	RateLimit      int    `env:"RATE_LIMIT"`
+	CryptoKey      string `env:"CRYPTO_KEY"`
 }
 
 // обработка аргументов командной строки
@@ -28,6 +29,8 @@ func ParseAgentFlags() (AgentConfig, error) {
 	flag.IntVar(&cfg.ReportInterval, "r", 10, "frequency of sending metrics to the server")
 	flag.StringVar(&cfg.Key, "k", "", "signing key")
 	flag.IntVar(&cfg.RateLimit, "l", 1, "the number of simultaneously outgoing requests to the server")
+
+	flag.StringVar(&cfg.CryptoKey, "crypto-key", "", "file path to public key for encryption")
 
 	// парсим переданные серверу аргументы командной строки в зарегистрированные переменные
 	flag.Parse()
