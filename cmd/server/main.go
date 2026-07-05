@@ -1,11 +1,16 @@
 package main
 
 import (
+	"context"
 	"crypto/rsa"
 	"database/sql"
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	_ "net/http/pprof"
 
@@ -49,40 +54,39 @@ func main() {
 func run(cfg config.ServerConfig, logger *logger.Logger) error {
 	var storage repository.Storage
 
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT)
+	defer stop()
+
+	var db *sql.DB
+	var fileStorage *file.FileStorage
+	var err error
+
 	if cfg.DatabaseDSN != "" {
-		db, err := sql.Open("pgx", cfg.DatabaseDSN)
+		db, err = sql.Open("pgx", cfg.DatabaseDSN)
 		if err != nil {
 			logger.Error("Error connect to data base", "error", err)
 			return fmt.Errorf("can't connect to DB: %w", err)
 		}
-		defer func() {
-			_ = db.Close()
-		}()
 
-		if err := migrations.ApplyMigrations(db, "file://migrations"); err != nil {
+		if err = migrations.ApplyMigrations(db, "file://migrations"); err != nil {
 			logger.Error("Error apply migrations", "error", err)
 			return fmt.Errorf("can't apply migrations: %w", err)
 		}
 
 		storage = postgres.New(db)
 		logger.Info("storage type: Postgres")
-
 	} else {
 		storage = inmemory.NewMemStorage()
 
-		fileStorage, err := file.NewFileStorage(storage, cfg.FilePath, logger)
+		fileStorage, err = file.NewFileStorage(storage, cfg.FilePath, logger)
 		if err != nil {
 			return fmt.Errorf("can't open file: %w", err)
 		}
 
-		defer func() {
-			_ = fileStorage.Close()
-		}()
-
 		fileStorage.RunBackup(cfg.StoreInterval)
 
 		if cfg.Restore {
-			err := fileStorage.LoadFromFile()
+			err = fileStorage.LoadFromFile()
 			if err != nil {
 				return fmt.Errorf("can't load from file: %w", err)
 			}
@@ -110,7 +114,6 @@ func run(cfg config.ServerConfig, logger *logger.Logger) error {
 
 	// получение приватного ключа для дешифровки входящих запросов
 	var privateKey *rsa.PrivateKey
-	var err error
 	if cfg.CryptoKey != "" {
 		privateKey, err = crypto.LoadPrivateKey(cfg.CryptoKey)
 		if err != nil {
@@ -119,5 +122,48 @@ func run(cfg config.ServerConfig, logger *logger.Logger) error {
 		logger.Info("private key loaded for decryption", "path", cfg.CryptoKey)
 	}
 
-	return http.ListenAndServe(cfg.RunAddr, handler.Route(logger, cfg.Key, privateKey))
+	srv := &http.Server{
+		Addr:    cfg.RunAddr,
+		Handler: handler.Route(logger, cfg.Key, privateKey),
+	}
+
+	errCh := make(chan error, 1)
+	go func() {
+		logger.Info("starting HTTP server", "addr", cfg.RunAddr)
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			errCh <- err
+		}
+	}()
+
+	select {
+	case err := <-errCh:
+		return err
+	case <-ctx.Done():
+		logger.Info("shutdown signal received")
+	}
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	logger.Info("stopping HTTP server")
+
+	if err := srv.Shutdown(shutdownCtx); err != nil {
+		return fmt.Errorf("graceful shutdown failed: %w", err)
+	}
+
+	if fileStorage != nil {
+		if err := fileStorage.Close(); err != nil {
+			logger.Error("close file storage", "error", err)
+		}
+	}
+
+	if db != nil {
+		if err := db.Close(); err != nil {
+			logger.Error("close db", "error", err)
+		}
+	}
+
+	logger.Info("HTTP server stopped")
+
+	return nil
 }
