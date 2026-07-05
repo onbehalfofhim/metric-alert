@@ -27,7 +27,6 @@ func main() {
 
 	// получение публичного ключа для шифрования
 	var publicKey *rsa.PublicKey
-	logger.Info("where is key", cfg.CryptoKey)
 	if cfg.CryptoKey != "" {
 		publicKey, err = crypto.LoadPublicKey(cfg.CryptoKey)
 		if err != nil {
