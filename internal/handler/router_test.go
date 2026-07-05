@@ -23,6 +23,7 @@ func TestRoute(t *testing.T) {
 	router := h.Route(
 		logger.NewLogger(),
 		"",
+		nil,
 	)
 
 	tests := []struct {
