@@ -53,7 +53,7 @@ func main() {
 	go func() {
 		defer wg.Done()
 
-		ticker := time.NewTicker(time.Duration(cfg.PollInterval) * time.Second)
+		ticker := time.NewTicker(cfg.PollInterval)
 		defer ticker.Stop()
 
 		for {
@@ -72,7 +72,7 @@ func main() {
 	go func() {
 		defer wg.Done()
 
-		ticker := time.NewTicker(time.Duration(cfg.PollInterval) * time.Second)
+		ticker := time.NewTicker(cfg.PollInterval)
 		defer ticker.Stop()
 
 		for {
@@ -121,7 +121,7 @@ func main() {
 	}
 
 	// формирование задачи на отпраку меткри на сервер
-	ticker := time.NewTicker(time.Duration(cfg.ReportInterval) * time.Second)
+	ticker := time.NewTicker(cfg.ReportInterval)
 	defer ticker.Stop()
 
 	for {
