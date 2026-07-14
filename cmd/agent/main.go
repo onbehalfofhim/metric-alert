@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/rsa"
 	"os"
 	"os/signal"
 	"sync"
@@ -11,6 +12,7 @@ import (
 	"github.com/onbehalfofhim/metric-alert/internal/agent"
 	"github.com/onbehalfofhim/metric-alert/internal/buildinfo"
 	"github.com/onbehalfofhim/metric-alert/internal/config"
+	"github.com/onbehalfofhim/metric-alert/internal/crypto"
 	"github.com/onbehalfofhim/metric-alert/internal/logger"
 	"github.com/onbehalfofhim/metric-alert/internal/models"
 )
@@ -23,15 +25,25 @@ func main() {
 		logger.Error("failed to set environment variables", "error", err)
 	}
 
+	// получение публичного ключа для шифрования
+	var publicKey *rsa.PublicKey
+	if cfg.CryptoKey != "" {
+		publicKey, err = crypto.LoadPublicKey(cfg.CryptoKey)
+		if err != nil {
+			logger.Error("failed to load public key: %w", err)
+		}
+		logger.Info("public key loaded for encryption", "path", cfg.CryptoKey)
+	}
+
 	buildinfo.Print()
 
 	// создание сборщика метрик
 	collector := agent.NewCollector()
 
 	// создание клиента для отправки метрик
-	client := agent.NewSender(cfg.RunAddr, cfg.Key)
+	client := agent.NewSender(cfg.RunAddr, cfg.Key, publicKey)
 
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT)
 	defer stop()
 
 	var wg sync.WaitGroup
@@ -41,7 +53,7 @@ func main() {
 	go func() {
 		defer wg.Done()
 
-		ticker := time.NewTicker(time.Duration(cfg.PollInterval) * time.Second)
+		ticker := time.NewTicker(cfg.PollInterval)
 		defer ticker.Stop()
 
 		for {
@@ -60,7 +72,7 @@ func main() {
 	go func() {
 		defer wg.Done()
 
-		ticker := time.NewTicker(time.Duration(cfg.PollInterval) * time.Second)
+		ticker := time.NewTicker(cfg.PollInterval)
 		defer ticker.Stop()
 
 		for {
@@ -109,7 +121,7 @@ func main() {
 	}
 
 	// формирование задачи на отпраку меткри на сервер
-	ticker := time.NewTicker(time.Duration(cfg.ReportInterval) * time.Second)
+	ticker := time.NewTicker(cfg.ReportInterval)
 	defer ticker.Stop()
 
 	for {

@@ -88,7 +88,7 @@ func TestSender_Send(t *testing.T) {
 			}))
 			defer server.Close()
 
-			s := NewSender(server.URL, "")
+			s := NewSender(server.URL, "", nil)
 
 			err := s.Send([]models.Metric{test.metric})
 
