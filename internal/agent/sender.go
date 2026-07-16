@@ -6,7 +6,9 @@ import (
 	"crypto/rsa"
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
+	"net/url"
 	"strconv"
 
 	"github.com/onbehalfofhim/metric-alert/internal/crypto"
@@ -89,6 +91,14 @@ func (s *Sender) doRequest(body any, endpoint string) error {
 	req.Header.Set("Content-Encoding", "gzip")
 	req.Header.Set("Accept-Encoding", "gzip")
 
+	u, err := url.Parse(s.URL)
+	if err == nil {
+		ip, err := getLocalIP(u.Host)
+		if err == nil {
+			req.Header.Set("X-Real-IP", ip)
+		}
+	}
+
 	// чтобы сервер понял, что тело зашифровано
 	if s.publicKey != nil {
 		req.Header.Set("X-Encrypted", "rsa")
@@ -136,4 +146,15 @@ func (s *Sender) SendBatch(metrics []models.Metric) error {
 	return retry.Retry(func() error {
 		return s.doRequest(metrics, "/updates/")
 	})
+}
+
+func getLocalIP(serverAddr string) (string, error) {
+	conn, err := net.Dial("udp", serverAddr)
+	if err != nil {
+		return "", err
+	}
+	defer conn.Close()
+
+	localAddr := conn.LocalAddr().(*net.UDPAddr)
+	return localAddr.IP.String(), nil
 }
