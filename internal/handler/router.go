@@ -13,9 +13,13 @@ import (
 // Route создает и настраивает HTTP-роутер chi с middleware и маршрутами OpenAPI.
 // key используется для валидации/добавления хеша ответа.
 // privateKey используется для расшифровки зашифрованных запросов.
-func (h *Handler) Route(log *logger.Logger, key string, privateKey *rsa.PrivateKey) http.Handler {
+func (h *Handler) Route(log *logger.Logger, key string, privateKey *rsa.PrivateKey, trustedSubnet string) http.Handler {
 	r := chi.NewRouter()
 	r.Use(middleware.RequestLogger(log))
+
+	if trustedSubnet != "" {
+		r.Use(middleware.SubnetCheck(trustedSubnet))
+	}
 
 	// расшифровка входящего запроса
 	if privateKey != nil {

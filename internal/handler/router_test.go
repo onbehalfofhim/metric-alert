@@ -24,6 +24,7 @@ func TestRoute(t *testing.T) {
 		logger.NewLogger(),
 		"",
 		nil,
+		"",
 	)
 
 	tests := []struct {

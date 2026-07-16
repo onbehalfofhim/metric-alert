@@ -124,7 +124,7 @@ func run(cfg config.ServerConfig, logger *logger.Logger) error {
 
 	srv := &http.Server{
 		Addr:    cfg.RunAddr,
-		Handler: handler.Route(logger, cfg.Key, privateKey),
+		Handler: handler.Route(logger, cfg.Key, privateKey, cfg.TrustedSubnet),
 	}
 
 	errCh := make(chan error, 1)
