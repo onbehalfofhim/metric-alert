@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -15,11 +16,14 @@ import (
 	_ "net/http/pprof"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
+	"google.golang.org/grpc"
 
+	pb "github.com/onbehalfofhim/metric-alert/api/proto"
 	"github.com/onbehalfofhim/metric-alert/internal/audit"
 	"github.com/onbehalfofhim/metric-alert/internal/buildinfo"
 	"github.com/onbehalfofhim/metric-alert/internal/config"
 	"github.com/onbehalfofhim/metric-alert/internal/crypto"
+	"github.com/onbehalfofhim/metric-alert/internal/grpcserver"
 	"github.com/onbehalfofhim/metric-alert/internal/handler"
 	"github.com/onbehalfofhim/metric-alert/internal/logger"
 	"github.com/onbehalfofhim/metric-alert/internal/repository"
@@ -122,6 +126,32 @@ func run(cfg config.ServerConfig, logger *logger.Logger) error {
 		logger.Info("private key loaded for decryption", "path", cfg.CryptoKey)
 	}
 
+	var grpcSrv *grpc.Server
+	errChGRPC := make(chan error, 1)
+	if cfg.GRPCAddr != "" {
+		opts := []grpc.ServerOption{}
+		if cfg.TrustedSubnet != "" {
+			opts = append(opts, grpc.UnaryInterceptor(grpcserver.SubnetCheckInterceptor(cfg.TrustedSubnet)))
+		}
+		grpcSrv = grpc.NewServer(opts...)
+		pb.RegisterMetricsServer(grpcSrv, grpcserver.NewMetricsServer(service, logger))
+
+		go func() {
+			listen, err := net.Listen("tcp", cfg.GRPCAddr)
+			if err != nil {
+				logger.Error("failed to listen gRPC", err)
+				errChGRPC <- err
+			}
+
+			logger.Info("starting gRPC server", "Addr", cfg.GRPCAddr)
+
+			if err := grpcSrv.Serve(listen); err != nil {
+				logger.Error("failed to serve gRPC", err)
+				errChGRPC <- err
+			}
+		}()
+	}
+
 	srv := &http.Server{
 		Addr:    cfg.RunAddr,
 		Handler: handler.Route(logger, cfg.Key, privateKey, cfg.TrustedSubnet),
@@ -138,6 +168,8 @@ func run(cfg config.ServerConfig, logger *logger.Logger) error {
 	select {
 	case err := <-errCh:
 		return err
+	case err := <-errChGRPC:
+		return err
 	case <-ctx.Done():
 		logger.Info("shutdown signal received")
 	}
@@ -145,7 +177,12 @@ func run(cfg config.ServerConfig, logger *logger.Logger) error {
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	logger.Info("stopping HTTP server")
+	logger.Info("stopping servers ...")
+
+	if grpcSrv != nil {
+		grpcSrv.GracefulStop()
+		logger.Info("gRPC server stopped")
+	}
 
 	if err := srv.Shutdown(shutdownCtx); err != nil {
 		return fmt.Errorf("graceful shutdown failed: %w", err)

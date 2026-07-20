@@ -41,7 +41,14 @@ func main() {
 	collector := agent.NewCollector()
 
 	// создание клиента для отправки метрик
-	client := agent.NewSender(cfg.RunAddr, cfg.Key, publicKey)
+	var sender agent.MetricsSender
+	if cfg.GRPCAddr != "" {
+		logger.Info("init gRPC sender")
+		sender, err = agent.NewGRPCMetricsSender(cfg.GRPCAddr, logger)
+	} else {
+		logger.Info("init HTTP sender")
+		sender = agent.NewSender(cfg.RunAddr, cfg.Key, publicKey)
+	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT)
 	defer stop()
@@ -104,7 +111,7 @@ func main() {
 						return
 					}
 
-					err := client.SendBatch(metrics)
+					err := sender.SendMetrics(ctx, metrics)
 					if err != nil {
 						logger.Error("failed to send metrics batch",
 							"worker", workerID,

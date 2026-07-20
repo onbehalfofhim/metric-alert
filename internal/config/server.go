@@ -23,6 +23,7 @@ type ServerConfig struct {
 	CryptoKey     string        `env:"CRYPTO_KEY"`
 	ConfigFile    string        `env:"CONFIG"`
 	TrustedSubnet string        `env:"TRUSTED_SUBNET"`
+	GRPCAddr      string        `env:"GRPC_ADDRESS"`
 }
 
 func defaultServerConfig() ServerConfig {
@@ -31,6 +32,7 @@ func defaultServerConfig() ServerConfig {
 		StoreInterval: 300 * time.Second,
 		FilePath:      "./metrics.txt",
 		Restore:       true,
+		GRPCAddr:      "localhost:3200",
 	}
 }
 
@@ -95,6 +97,7 @@ type serverFlags struct {
 	CryptoKey     string
 	ConfigFile    string
 	TrustedSubnet string
+	GRPCAddr      string
 }
 
 func parseServerFlags() (*flag.FlagSet, serverFlags, error) {
@@ -121,6 +124,8 @@ func parseServerFlags() (*flag.FlagSet, serverFlags, error) {
 	fs.StringVar(&f.ConfigFile, "config", "", "path to config file")
 
 	fs.StringVar(&f.TrustedSubnet, "t", "", "trusted subnet (CIDR)")
+
+	fs.StringVar(&f.GRPCAddr, "g", "", "gRPC server address")
 
 	if err := fs.Parse(os.Args[1:]); err != nil {
 		return nil, f, err
@@ -197,6 +202,8 @@ func applyFlags(cfg *ServerConfig, fs *flag.FlagSet, f serverFlags) {
 			cfg.CryptoKey = f.CryptoKey
 		case "t":
 			cfg.TrustedSubnet = f.TrustedSubnet
+		case "g":
+			cfg.GRPCAddr = f.GRPCAddr
 		}
 	})
 }

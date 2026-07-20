@@ -3,6 +3,7 @@ package agent
 import (
 	"bytes"
 	"compress/gzip"
+	"context"
 	"crypto/rsa"
 	"encoding/json"
 	"fmt"
@@ -155,6 +156,14 @@ func getLocalIP(serverAddr string) (string, error) {
 	}
 	defer conn.Close()
 
-	localAddr := conn.LocalAddr().(*net.UDPAddr)
+	localAddr, ok := conn.LocalAddr().(*net.UDPAddr)
+	if !ok {
+		return "", fmt.Errorf("failed to get local udp address")
+	}
+
 	return localAddr.IP.String(), nil
+}
+
+func (s *Sender) SendMetrics(ctx context.Context, metrics []models.Metric) error {
+	return s.SendBatch(metrics)
 }

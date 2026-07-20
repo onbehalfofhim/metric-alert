@@ -19,6 +19,7 @@ type AgentConfig struct {
 	RateLimit      int           `env:"RATE_LIMIT"`
 	CryptoKey      string        `env:"CRYPTO_KEY"`
 	ConfigFile     string        `env:"CONFIG"`
+	GRPCAddr       string        `env:"GRPC_ADDRESS"`
 }
 
 func defaultAgentConfig() AgentConfig {
@@ -27,6 +28,7 @@ func defaultAgentConfig() AgentConfig {
 		PollInterval:   2 * time.Second,
 		ReportInterval: 10 * time.Second,
 		RateLimit:      1,
+		GRPCAddr:       "localhost:3200",
 	}
 }
 
@@ -87,6 +89,7 @@ type agentFlags struct {
 	RateLimit      int
 	CryptoKey      string
 	ConfigFile     string
+	GRPCAddr       string
 }
 
 func parseAgentFlags() (*flag.FlagSet, agentFlags, error) {
@@ -104,6 +107,8 @@ func parseAgentFlags() (*flag.FlagSet, agentFlags, error) {
 
 	fs.StringVar(&f.ConfigFile, "c", "", "path to config file")
 	fs.StringVar(&f.ConfigFile, "config", "", "path to config file")
+
+	fs.StringVar(&f.GRPCAddr, "g", "", "gRPC server address")
 
 	if err := fs.Parse(os.Args[1:]); err != nil {
 		return nil, f, err
@@ -157,6 +162,8 @@ func applyAgentFlags(cfg *AgentConfig, fs *flag.FlagSet, f agentFlags) {
 			cfg.ReportInterval = f.ReportInterval
 		case "crypto-key":
 			cfg.CryptoKey = f.CryptoKey
+		case "g":
+			cfg.GRPCAddr = f.GRPCAddr
 		}
 	})
 }
