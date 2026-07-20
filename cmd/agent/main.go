@@ -44,7 +44,7 @@ func main() {
 	var sender agent.MetricsSender
 	if cfg.GRPCAddr != "" {
 		logger.Info("init gRPC sender")
-		sender, err = agent.NewGRPCMetricsSender(cfg.GRPCAddr, logger)
+		sender, err = agent.NewGRPCSender(cfg.GRPCAddr, logger)
 	} else {
 		logger.Info("init HTTP sender")
 		sender = agent.NewSender(cfg.RunAddr, cfg.Key, publicKey)

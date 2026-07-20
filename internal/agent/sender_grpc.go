@@ -19,7 +19,7 @@ type GRPCSender struct {
 	logger  *logger.Logger
 }
 
-func NewGRPCMetricsSender(serverAddr string, logger *logger.Logger) (*GRPCSender, error) {
+func NewGRPCSender(serverAddr string, logger *logger.Logger) (*GRPCSender, error) {
 	conn, err := grpc.NewClient(
 		serverAddr,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
