@@ -2,6 +2,7 @@ package grpcserver
 
 import (
 	"context"
+	"fmt"
 	"net"
 
 	"google.golang.org/grpc"
@@ -10,13 +11,18 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-func SubnetCheckInterceptor(trustedSubnet string) grpc.UnaryServerInterceptor {
-	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
-		_, ipNet, err := net.ParseCIDR(trustedSubnet)
-		if err != nil {
-			return nil, status.Error(codes.Internal, "invalid trusted subnet configuration")
-		}
+func SubnetCheckInterceptor(trustedSubnet string) (grpc.UnaryServerInterceptor, error) {
+	_, ipNet, err := net.ParseCIDR(trustedSubnet)
+	if err != nil {
+		return nil, fmt.Errorf("parse trusted subnet: %w", err)
+	}
 
+	return func(
+		ctx context.Context,
+		req interface{},
+		info *grpc.UnaryServerInfo,
+		handler grpc.UnaryHandler,
+	) (interface{}, error) {
 		md, ok := metadata.FromIncomingContext(ctx)
 		if !ok {
 			return nil, status.Error(codes.PermissionDenied, "missing metadata")
@@ -37,5 +43,5 @@ func SubnetCheckInterceptor(trustedSubnet string) grpc.UnaryServerInterceptor {
 		}
 
 		return handler(ctx, req)
-	}
+	}, nil
 }

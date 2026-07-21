@@ -130,23 +130,30 @@ func run(cfg config.ServerConfig, logger *logger.Logger) error {
 	errChGRPC := make(chan error, 1)
 	if cfg.GRPCAddr != "" {
 		opts := []grpc.ServerOption{}
+
 		if cfg.TrustedSubnet != "" {
-			opts = append(opts, grpc.UnaryInterceptor(grpcserver.SubnetCheckInterceptor(cfg.TrustedSubnet)))
+			interceptor, err := grpcserver.SubnetCheckInterceptor(cfg.TrustedSubnet)
+			if err != nil {
+				return fmt.Errorf("create subnet interceptor: %w", err)
+			}
+			opts = append(opts, grpc.UnaryInterceptor(interceptor))
 		}
+
 		grpcSrv = grpc.NewServer(opts...)
 		pb.RegisterMetricsServer(grpcSrv, grpcserver.NewMetricsServer(service, logger))
 
 		go func() {
 			listen, err := net.Listen("tcp", cfg.GRPCAddr)
 			if err != nil {
-				logger.Error("failed to listen gRPC", err)
+				logger.Error("failed to listen gRPC", "error", err)
 				errChGRPC <- err
+				return
 			}
 
 			logger.Info("starting gRPC server", "Addr", cfg.GRPCAddr)
 
 			if err := grpcSrv.Serve(listen); err != nil {
-				logger.Error("failed to serve gRPC", err)
+				logger.Error("failed to serve gRPC", "error", err)
 				errChGRPC <- err
 			}
 		}()

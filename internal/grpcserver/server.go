@@ -26,11 +26,11 @@ func NewMetricsServer(svc *metric.MetricsService, logger *logger.Logger) *Metric
 }
 
 func (s *MetricsServer) UpdateMetrics(ctx context.Context, req *pb.UpdateMetricsRequest) (*pb.UpdateMetricsResponse, error) {
-	reqMetrics := req.GetMetrics()
-
-	if req == nil || len(reqMetrics) == 0 {
+	if req == nil || len(req.GetMetrics()) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "metrics list is empty")
 	}
+
+	reqMetrics := req.GetMetrics()
 
 	s.logger.Info("received UpdateMetrics request",
 		"count", len(reqMetrics),

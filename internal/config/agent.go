@@ -28,7 +28,7 @@ func defaultAgentConfig() AgentConfig {
 		PollInterval:   2 * time.Second,
 		ReportInterval: 10 * time.Second,
 		RateLimit:      1,
-		GRPCAddr:       "localhost:3200",
+		GRPCAddr:       "",
 	}
 }
 

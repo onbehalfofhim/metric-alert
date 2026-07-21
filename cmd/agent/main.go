@@ -31,6 +31,7 @@ func main() {
 		publicKey, err = crypto.LoadPublicKey(cfg.CryptoKey)
 		if err != nil {
 			logger.Error("failed to load public key: %w", err)
+			os.Exit(1)
 		}
 		logger.Info("public key loaded for encryption", "path", cfg.CryptoKey)
 	}
@@ -45,6 +46,10 @@ func main() {
 	if cfg.GRPCAddr != "" {
 		logger.Info("init gRPC sender")
 		sender, err = agent.NewGRPCSender(cfg.GRPCAddr, logger)
+		if err != nil {
+			logger.Error("failed to initialize gRPC sender", "error", err)
+			os.Exit(1)
+		}
 	} else {
 		logger.Info("init HTTP sender")
 		sender = agent.NewSender(cfg.RunAddr, cfg.Key, publicKey)
