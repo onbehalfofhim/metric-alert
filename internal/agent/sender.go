@@ -3,10 +3,13 @@ package agent
 import (
 	"bytes"
 	"compress/gzip"
+	"context"
 	"crypto/rsa"
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
+	"net/url"
 	"strconv"
 
 	"github.com/onbehalfofhim/metric-alert/internal/crypto"
@@ -89,6 +92,14 @@ func (s *Sender) doRequest(body any, endpoint string) error {
 	req.Header.Set("Content-Encoding", "gzip")
 	req.Header.Set("Accept-Encoding", "gzip")
 
+	u, err := url.Parse(s.URL)
+	if err == nil {
+		ip, err := getLocalIP(u.Host)
+		if err == nil {
+			req.Header.Set("X-Real-IP", ip)
+		}
+	}
+
 	// чтобы сервер понял, что тело зашифровано
 	if s.publicKey != nil {
 		req.Header.Set("X-Encrypted", "rsa")
@@ -136,4 +147,23 @@ func (s *Sender) SendBatch(metrics []models.Metric) error {
 	return retry.Retry(func() error {
 		return s.doRequest(metrics, "/updates/")
 	})
+}
+
+func getLocalIP(serverAddr string) (string, error) {
+	conn, err := net.Dial("udp", serverAddr)
+	if err != nil {
+		return "", err
+	}
+	defer conn.Close()
+
+	localAddr, ok := conn.LocalAddr().(*net.UDPAddr)
+	if !ok {
+		return "", fmt.Errorf("failed to get local udp address")
+	}
+
+	return localAddr.IP.String(), nil
+}
+
+func (s *Sender) SendMetrics(ctx context.Context, metrics []models.Metric) error {
+	return s.SendBatch(metrics)
 }

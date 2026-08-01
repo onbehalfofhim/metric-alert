@@ -22,6 +22,8 @@ type ServerConfig struct {
 	AuditURL      string        `env:"AUDIT_URL"`
 	CryptoKey     string        `env:"CRYPTO_KEY"`
 	ConfigFile    string        `env:"CONFIG"`
+	TrustedSubnet string        `env:"TRUSTED_SUBNET"`
+	GRPCAddr      string        `env:"GRPC_ADDRESS"`
 }
 
 func defaultServerConfig() ServerConfig {
@@ -30,6 +32,7 @@ func defaultServerConfig() ServerConfig {
 		StoreInterval: 300 * time.Second,
 		FilePath:      "./metrics.txt",
 		Restore:       true,
+		GRPCAddr:      "localhost:3200",
 	}
 }
 
@@ -63,7 +66,6 @@ func ParseServerFlags() (ServerConfig, error) {
 		}
 
 		if err := applyJSON(&cfg, jc); err != nil {
-
 			return cfg, err
 		}
 	}
@@ -94,6 +96,8 @@ type serverFlags struct {
 	AuditURL      string
 	CryptoKey     string
 	ConfigFile    string
+	TrustedSubnet string
+	GRPCAddr      string
 }
 
 func parseServerFlags() (*flag.FlagSet, serverFlags, error) {
@@ -119,6 +123,10 @@ func parseServerFlags() (*flag.FlagSet, serverFlags, error) {
 	fs.StringVar(&f.ConfigFile, "c", "", "path to config file")
 	fs.StringVar(&f.ConfigFile, "config", "", "path to config file")
 
+	fs.StringVar(&f.TrustedSubnet, "t", "", "trusted subnet (CIDR)")
+
+	fs.StringVar(&f.GRPCAddr, "g", "", "gRPC server address")
+
 	if err := fs.Parse(os.Args[1:]); err != nil {
 		return nil, f, err
 	}
@@ -132,6 +140,7 @@ type serverConfigJSON struct {
 	Restore       *bool   `json:"restore"`
 	DatabaseDSN   *string `json:"database_dsn"`
 	CryptoKey     *string `json:"crypto_key"`
+	TrustedSubnet *string `json:"trusted_subnet"`
 }
 
 func applyJSON(cfg *ServerConfig, jc serverConfigJSON) error {
@@ -140,7 +149,6 @@ func applyJSON(cfg *ServerConfig, jc serverConfigJSON) error {
 	}
 
 	if jc.StoreInterval != nil {
-
 		d, err := time.ParseDuration(*jc.StoreInterval)
 		if err != nil {
 			return fmt.Errorf("invalid store_interval: %w", err)
@@ -162,6 +170,10 @@ func applyJSON(cfg *ServerConfig, jc serverConfigJSON) error {
 
 	if jc.CryptoKey != nil {
 		cfg.CryptoKey = *jc.CryptoKey
+	}
+
+	if jc.TrustedSubnet != nil {
+		cfg.TrustedSubnet = *jc.TrustedSubnet
 	}
 
 	return nil
@@ -188,6 +200,10 @@ func applyFlags(cfg *ServerConfig, fs *flag.FlagSet, f serverFlags) {
 			cfg.AuditURL = f.AuditURL
 		case "crypto-key":
 			cfg.CryptoKey = f.CryptoKey
+		case "t":
+			cfg.TrustedSubnet = f.TrustedSubnet
+		case "g":
+			cfg.GRPCAddr = f.GRPCAddr
 		}
 	})
 }
